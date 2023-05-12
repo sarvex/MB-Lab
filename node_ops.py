@@ -29,8 +29,7 @@ from numpy import array
 
 
 def get_filename(filePath, File):
-    FP = os.path.join(filePath, File)
-    return FP
+    return os.path.join(filePath, File)
 
 def get_universal_dict(filename):
     with np.load(filename, 'r+', allow_pickle=True) as data:
@@ -74,8 +73,6 @@ def remove_universal_presets(filename, style, List):
         np.savez(filename, **d)
 
 def replace_removed_shader(filename, List):
-    if not List:
-        pass
     with np.load(filename, 'r+', allow_pickle=True) as data:
         d = dict(data)
         rl = List[-1]
@@ -98,17 +95,13 @@ def import_universal_presets(filename, mport):
             d = dict(data)
         with np.load(mport, 'r+') as imdata:
             imd = dict(imdata)
-            d.update(imd)
+            d |= imd
         np.savez(filename, **d)
-    else:
-        pass
 
 #######################################################################
 
 def get_material(mat_name):
-    mat = (bpy.data.materials.get(mat_name) or 
-       bpy.data.materials.new(mat_name))
-    return mat
+    return bpy.data.materials.get(mat_name) or bpy.data.materials.new(mat_name)
 
 def clear_material(object):
     object.data.materials.clear()
@@ -128,8 +121,7 @@ def add_shader_node(material, node_type, Label, Name, location):
 
 def add_node_link(material, link1, link2):
     links = material.node_tree.links
-    link = links.new(link1, link2)
-    return link
+    return links.new(link1, link2)
 
 def shader_prep(material):
     clear_material(bpy.context.object)
@@ -152,26 +144,24 @@ def set_links(material, nlink):
 #######################################################################
 
 def shader_get_dict():
-    shader_ = { 
-                'ShaderNodeMixRGB': get_mix_shader, 
-                'ShaderNodeValToRGB': get_colorramp_shader, 
-                'ShaderNodeBsdfDiffuse': get_bsdf_diffuse_shader, 
-                'ShaderNodeBsdfGlossy': get_bsdf_glossy_shader,
-                'ShaderNodeBsdfHairPrincipled': get_hairP_shader,
-                'ShaderNodeTexImage': get_image_shader,
-            }
-    return shader_
+    return {
+        'ShaderNodeMixRGB': get_mix_shader,
+        'ShaderNodeValToRGB': get_colorramp_shader,
+        'ShaderNodeBsdfDiffuse': get_bsdf_diffuse_shader,
+        'ShaderNodeBsdfGlossy': get_bsdf_glossy_shader,
+        'ShaderNodeBsdfHairPrincipled': get_hairP_shader,
+        'ShaderNodeTexImage': get_image_shader,
+    }
 
 def shader_set_dict():
-    shader_ = { 
-                'ShaderNodeMixRGB': set_mix_shader, 
-                'ShaderNodeValToRGB': set_colorramp_shader,
-                'ShaderNodeBsdfDiffuse': set_bsdf_diffuse_shader, 
-                'ShaderNodeBsdfGlossy': set_bsdf_glossy_shader,
-                'ShaderNodeBsdfHairPrincipled': set_hairP_shader,
-                'ShaderNodeTexImage': set_image_shader,
-            }
-    return shader_
+    return {
+        'ShaderNodeMixRGB': set_mix_shader,
+        'ShaderNodeValToRGB': set_colorramp_shader,
+        'ShaderNodeBsdfDiffuse': set_bsdf_diffuse_shader,
+        'ShaderNodeBsdfGlossy': set_bsdf_glossy_shader,
+        'ShaderNodeBsdfHairPrincipled': set_hairP_shader,
+        'ShaderNodeTexImage': set_image_shader,
+    }
 
 #######################################################################
 
@@ -291,15 +281,15 @@ def set_hairP_shader(node_name, parametrization, v0, v1, v2, v3, v4, v5, v6, v7,
     nodes = material.node_tree.nodes
     node = nodes.get(node_name)
     node.parametrization = parametrization #['ABSORPTION', 'COLOR', 'MELANIN']
-    if parametrization == 'COLOR': #Direct Coloring
+    if parametrization == 'ABSORPTION':
+        node.inputs[4].default_value = v4 #Absorbtion Coefficient
+    elif parametrization == 'COLOR':
         node.inputs[0].default_value = v0 #Color
-    if parametrization == 'MELANIN': #Melanin Concetration
+    elif parametrization == 'MELANIN':
         node.inputs[1].default_value = v1 #Melanin
         node.inputs[2].default_value = v2 #Melanin Redness
         node.inputs[3].default_value = v3 #Tint
         node.inputs[10].default_value = v10 #Random Color
-    if parametrization == 'ABSORPTION': #
-        node.inputs[4].default_value = v4 #Absorbtion Coefficient
     node.inputs[5].default_value = v5 #Roughness
     node.inputs[6].default_value = v6 #Radial Roughness
     node.inputs[7].default_value = v7 #Coat

@@ -212,7 +212,7 @@ class ExpressionsCreator():
         return self.standard_expressions_list
 
     def get_standard_base_expr(self, key=None):
-        if key == None:
+        if key is None:
             return self.standard_expressions
         value = None
         for index in range(len(self.standard_expressions)):
@@ -222,7 +222,7 @@ class ExpressionsCreator():
         return ""
 
     def get_body_parts_expr(self, key=None):
-        if key == None:
+        if key is None:
             return self.body_parts_expr
         value = None
         for index in range(len(self.body_parts_expr)):
@@ -232,7 +232,7 @@ class ExpressionsCreator():
         return ""
 
     def get_min_max_expr(self, key=None):
-        if key == None:
+        if key is None:
             return self.min_max_expr
         value = None
         for index in range(len(self.min_max_expr)):
@@ -248,7 +248,7 @@ class ExpressionsCreator():
         return self.expression_name[0]
 
     def set_expression_ID(self, id):
-        self.expression_name[1] = "Expressions_ID" + id + "_max"
+        self.expression_name[1] = f"Expressions_ID{id}_max"
 
     def get_expression_ID(self):
         return self.expression_name[1]
@@ -288,10 +288,7 @@ class ExpressionsCreator():
         cat = self.humanoid.get_category("Expressions")
         tiny = cat.get_modifier_tiny_name(sub_categories=[sub], exclude_in_others=self.body_parts_expr_list)
         items = tiny[sub]
-        return_items = []
-        for item in items:
-            return_items.append(item[2])
-        return return_items
+        return [item[2] for item in items]
 
     # Return an enumProperty with all sub-categories.
     def get_expressions_sub_categories(self):
@@ -307,7 +304,11 @@ class ExpressionsCreator():
         if len(root_model) < 1 or len(name) < 1:
             return False
         try:
-            path = os.path.join(file_ops.get_data_path(), "expressions_comb", root_model+"_expressions")
+            path = os.path.join(
+                file_ops.get_data_path(),
+                "expressions_comb",
+                f"{root_model}_expressions",
+            )
             for database_file in os.listdir(path):
                 the_item, extension = os.path.splitext(database_file)
                 if the_item == name:
@@ -322,10 +323,8 @@ class ExpressionsCreator():
     def set_expressions_items(self, sorted_names):
         if len(self.editor_expressions_items) > 0:
             return
-        key = 0
-        for s_n in sorted_names:
+        for key, s_n in enumerate(sorted_names):
             self.editor_expressions_items.append((str(key).zfill(3), s_n, "" ))
-            key += 1
 
     def get_expressions_items(self):
         return self.editor_expressions_items
@@ -338,12 +337,9 @@ class ExpressionsCreator():
         #Get all files in morphs directory, with standard ones.
         #Used when the engine loads expressions librairies.
         dir = os.path.join(data_path, data_type_path)
-        found_files = []
         body_type_split = body_type.split('_')[:2]
         list = os.listdir(dir)
-        for item in list:
-            if item == body_type:
-                found_files += [os.path.join(dir, item)]
+        found_files = [os.path.join(dir, item) for item in list if item == body_type]
         for item in list:
             if item.split('_')[:2] == body_type_split and item != body_type:
                 found_files += [os.path.join(dir, item)]
@@ -355,10 +351,14 @@ class ExpressionsCreator():
         # in its dedicated file.
         # If file already exists, it's replaced.
         logger.info("Exporting character to {0}".format(file_ops.simple_path(filepath)))
-        obj = self.humanoid.get_object()
-        char_data = {"manuellab_vers": self.lab_vers, "structural": dict(), "metaproperties": dict(), "materialproperties": dict()}
+        if obj := self.humanoid.get_object():
+            char_data = {
+                "manuellab_vers": self.lab_vers,
+                "structural": {},
+                "metaproperties": {},
+                "materialproperties": {},
+            }
 
-        if obj:
             for prop in self.humanoid.character_data.keys():
                 if self.humanoid.character_data[prop] != 0.5 and prop.startswith("Expressions_"):
                     char_data["structural"][prop] = round(self.humanoid.character_data[prop], 4)
@@ -369,39 +369,38 @@ class ExpressionsCreator():
     # data_source can be a filepath but also the data themselves.
     def load_face_expression(self, data_source, reset_unassigned=True):
         
-        if self.humanoid == None:
+        if self.humanoid is None:
             return
-        
+
         obj = self.humanoid.get_object()
         log_msg_type = "Expression data"
-        
+
         if isinstance(data_source, str):
             log_msg_type = file_ops.simple_path(data_source)
             charac_data = file_ops.load_json_data(data_source, "Expression data")
         else:
             charac_data = data_source
-        
+
         logger.info("Loading expression from {0}".format(log_msg_type))
-        
+
         if "manuellab_vers" in charac_data:
             if not utils.check_version(charac_data["manuellab_vers"]):
                 logger.warning("{0} created with vers. {1}. Current vers is {2}".format(log_msg_type, charac_data["manuellab_vers"], self.lab_vers))
         else:
             logger.info("No lab version specified in {0}".format(log_msg_type))
-        
+
         if "structural" in charac_data:
             char_data = charac_data["structural"]
         else:
             logger.warning("No structural data in  {0}".format(log_msg_type))
             char_data = {}
-        
+
         # data are loaded, now update the character.
         if char_data is not None:
             for name in self.humanoid.character_data.keys():
                 if name in char_data:
                     self.humanoid.character_data[name] = char_data[name]
-                else:
-                    if reset_unassigned and name.startswith("Expressions_"):
-                        self.humanoid.character_data[name] = 0.5
+                elif reset_unassigned and name.startswith("Expressions_"):
+                    self.humanoid.character_data[name] = 0.5
             # Now updating.
             self.humanoid.update_character(mode="update_all")

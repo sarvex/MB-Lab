@@ -31,7 +31,7 @@ from . import file_ops
 
 
 def dict_to_nparray(Dict):
-    Keys = np.array([i for i in Dict])
+    Keys = np.array(list(Dict))
     Values = [np.array(Dict[i]) for i in Dict]
     return Keys, Values
 
@@ -44,8 +44,7 @@ def load_npz(fileName):
     
 def get_data_index(Key, Keys):
     L = Keys.tolist()
-    idx = L.index(Key)
-    return idx
+    return L.index(Key)
 
 def get_data_value(Key, fileName):
     data = load_npz(fileName)[1][get_data_index(Key, load_npz(fileName)[0])]
@@ -93,8 +92,7 @@ def get_file(Folder, fileName):
 
 def get_data(Folder, fileName):
     File = get_file(Folder, fileName)
-    data = load_npz(File)
-    return data
+    return load_npz(File)
 
 def dict_to_npz(Dict, fileName):
     Keys, Values = dict_to_nparray(Dict)

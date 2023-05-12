@@ -260,10 +260,7 @@ def sort_joints(ik=False, head=False, content=[]):
     final_list = []
     tmp = []
     if ik:
-        if head:
-            tmp = ik_joints_head
-        else:
-            tmp = ik_joints_tail
+        tmp = ik_joints_head if head else ik_joints_tail
     elif head:
         tmp = normal_joints_head
     else:

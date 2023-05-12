@@ -64,11 +64,8 @@ class ExpressionEngineShapeK:
         self.expression_creator = expressionscreator.ExpressionsCreator()
 
     def identify_model_type(self):
-        #self.model_type = "NONE"
-        obj = algorithms.get_active_body()
-        if obj:
-            current_shapekes_names = algorithms.get_shapekeys_names(obj)
-            if current_shapekes_names:
+        if obj := algorithms.get_active_body():
+            if current_shapekes_names := algorithms.get_shapekeys_names(obj):
                 """if "Expressions_IDHumans_max" in current_shapekes_names:
                     self.model_type = "HUMAN"
                     return
@@ -99,12 +96,9 @@ class ExpressionEngineShapeK:
             logger.info("No lab version specified in %s", expressions_id)
 
         if "structural" in charac_data:
-            char_data = charac_data["structural"]
-        else:
-            logger.warning("No structural data in  %s", expressions_id)
-            char_data = None
-
-        return char_data
+            return charac_data["structural"]
+        logger.warning("No structural data in  %s", expressions_id)
+        return None
 
     def load_expression_database(self, dirpath):
         expressions_data = {}
@@ -193,7 +187,7 @@ class ExpressionEngineShapeK:
                     name = f"{name}_max"
                     sk_value = (value - 0.5) * 2
 
-                sk_value = sk_value*express_val
+                sk_value *= express_val
 
                 if sk_value != 0 and hasattr(obj.data.shape_keys, 'key_blocks'):
                     if name in obj.data.shape_keys.key_blocks:
@@ -215,9 +209,11 @@ class ExpressionEngineShapeK:
             for name, value in expr_data.items():
                 name = f"{name}_min" if value < 0.5 else f"{name}_max"
 
-                if hasattr(obj.data.shape_keys, 'key_blocks'):
-                    if name in obj.data.shape_keys.key_blocks:
-                        obj.data.shape_keys.key_blocks[name].value = 0
+                if (
+                    hasattr(obj.data.shape_keys, 'key_blocks')
+                    and name in obj.data.shape_keys.key_blocks
+                ):
+                    obj.data.shape_keys.key_blocks[name].value = 0
 
     @staticmethod
     def keyframe_expression():

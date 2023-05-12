@@ -38,17 +38,13 @@ from . import utils
 
 # create the template for vgroups base file.
 def create_base_template_file(filepath):
-    file = {}
-    for item in skeleton_ops.base_bones:
-        file[item] = []
+    file = {item: [] for item in skeleton_ops.base_bones}
     with open(filepath, "w") as j_file:
         json.dump(file, j_file, indent=2)
 
 # create the template for vgroups muscle file.
 def create_muscle_template_file(filepath):
-    file = {}
-    for item in skeleton_ops.muscle_bones:
-        file[item] = []
+    file = {item: [] for item in skeleton_ops.muscle_bones}
     with open(filepath, "w") as j_file:
         json.dump(file, j_file, indent=2)
 
@@ -77,10 +73,7 @@ def get_set_vgroups_file(type, vgroups_name):
         vgroups_name)
     file = file_ops.load_json_data(filepath)
     if file != None:
-        extended_file = {}
-        extended_file["name"] = vgroups_name
-        extended_file["file"] = file
-        extended_file["init"] = False
+        extended_file = {"name": vgroups_name, "file": file, "init": False}
         # we add the dict in list of file
         if type == 'BASE':
             vgroups_base_files[vgroups_name] = extended_file
@@ -92,7 +85,7 @@ def set_current_vgroups_file(type, vgroups_name):
     global current_vgroups_file
     if vgroups_name != current_vgroups_file:
         tmp = get_set_vgroups_file(type, vgroups_name)
-        if tmp == None:
+        if tmp is None:
             return
         current_vgroups_file = vgroups_name
 
@@ -100,28 +93,25 @@ def set_current_vgroups_type(type, obj):
     global current_vgroups_file
     global vgroups_base_files
     global vgroups_muscle_files
-    if obj == None or len(current_vgroups_file) < 1:
+    if obj is None or len(current_vgroups_file) < 1:
         return
     pack = None
     if type == 'BASE':
         pack = vgroups_base_files[current_vgroups_file]
     else:
         pack = vgroups_muscle_files[current_vgroups_file]
-    if pack == None or pack["init"]:
+    if pack is None or pack["init"]:
         return
     # Check a last time if obj exists, and init.
     if "object" not in pack:
         pack["object"] = obj
-    if pack["object"] == None:
+    if pack["object"] is None:
         return
     pack["init"] = True
-    # Now we create the weight paints    
+    # Now we create the weight paints
     for key, value in pack['file'].items():
         txt = ""
-        if type == 'BASE':
-            txt = "base_" + key
-        else:
-            txt = "mscl_" + key
+        txt = f"base_{key}" if type == 'BASE' else f"mscl_{key}"
         vg = obj.vertex_groups.new(name=txt)
         for i in value:
             vg.add([i[0]], i[1], "REPLACE")
@@ -139,7 +129,7 @@ def get_current_vgroups_type(type):
         pack = vgroups_base_files[current_vgroups_file]
     else:
         pack = vgroups_muscle_files[current_vgroups_file]
-    if pack == None:
+    if pack is None:
         return None
     # Now we get the vgroups on object.
     obj = pack["object"]
@@ -164,7 +154,7 @@ def save_current_vgroups_type(type):
     global vgroups_base_files
     global vgroups_muscle_files
     vg = get_current_vgroups_type(type)
-    if vg == None:
+    if vg is None:
         return
     addon_directory = os.path.dirname(os.path.realpath(__file__))
     filepath = os.path.join(

@@ -75,16 +75,16 @@ class MeshHistory:
         self.name = name
     
     def set_object(self, obj):
-        if self.object == None:
+        if self.object is None:
             self.object = obj
         
     def add_selection(self):
         bm = bmesh.from_edit_mesh(self.object.data)
         element = bm.select_history
-        if element == None: # Could happen
+        if element is None: # Could happen
             return
         e = element.active
-        if e == None: # Could happen
+        if e is None: # Could happen
             return
         index = e.index
         if isinstance(e, bmesh.types.BMVert):
@@ -155,18 +155,12 @@ class MeshHistory:
         return []
     
     def get_history(self, type='VERTEX', index=-1):
-        if type == 'VERTEX':
-            if index > -1:
-                return [self.vertices_history[index]]
-            return self.vertices_history
-        elif type == 'EDGE':
-            if index > -1:
-                return [self.edges_history[index]]
-            return self.edges_history
+        if type == 'EDGE':
+            return [self.edges_history[index]] if index > -1 else self.edges_history
         elif type == 'FACE':
-            if index > -1:
-                return [self.faces_history[index]]
-            return self.faces_history
+            return [self.faces_history[index]] if index > -1 else self.faces_history
+        elif type == 'VERTEX':
+            return [self.vertices_history[index]] if index > -1 else self.vertices_history
         return []
     
     def select_previous(self, type='VERTEX'):
@@ -228,10 +222,10 @@ class MeshHistory:
     def remove_selected(self):
         bm = bmesh.from_edit_mesh(self.object.data)
         element = bm.select_history
-        if element == None: # Could happen
+        if element is None: # Could happen
             return
         e = element.active
-        if e == None: # Could happen
+        if e is None: # Could happen
             return
         index = e.index
         if isinstance(e, bmesh.types.BMVert):
@@ -318,7 +312,7 @@ class MeshHandling:
         self.set_object(obj)
     
     def set_object(self, obj):
-        if obj == None:
+        if obj is None:
             return
         self.object = obj
         if len(self.history) > 0:
@@ -326,12 +320,10 @@ class MeshHandling:
                 item.set_object(obj)
     
     def get_mesh_history(self, name):
-        if name in self.history:
-            return self.history[name]
-        return None
+        return self.history[name] if name in self.history else None
     
     def set_mesh_history(self, hist):
-        if hist == None:
+        if hist is None:
             return
         self.history[hist.name] = hist
     
@@ -358,7 +350,7 @@ class MeshHandling:
 # Select vertices, lines, faces, etc in a mesh.
 # Rough method, no many checks.
 def select_global(mesh, int_list, unselect_all=True, vertices=False, edges=False, faces=False):
-    if len(int_list) < 1 or mesh == None:
+    if len(int_list) < 1 or mesh is None:
         return
     if unselect_all:
         bpy.ops.mesh.select_all(action='DESELECT')
@@ -395,7 +387,7 @@ def unselect_all():
 # Return a dict of MeshHistory
 def load_standalone(filepath, obj=None):
     file = file_ops.load_json_data(filepath, "Load history from file")
-    if file == None:
+    if file is None:
         return
     history_list = {}
     for key, item in file.items():

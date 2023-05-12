@@ -107,15 +107,17 @@ class SkeletonEngine:
     def move_up_armature_modifier(self):
         if self.has_data:
             obj = self.get_body()
-            armature_modifier = algorithms.get_modifier(obj, self.armature_modifier_name)
-            if armature_modifier:
+            if armature_modifier := algorithms.get_modifier(
+                obj, self.armature_modifier_name
+            ):
                 algorithms.move_up_modifier(obj, armature_modifier)
 
     def apply_armature_modifier(self):
         if self.has_data:
             obj = self.get_body()
-            armature_modifier = algorithms.get_modifier(obj, self.armature_modifier_name)
-            if armature_modifier:
+            if armature_modifier := algorithms.get_modifier(
+                obj, self.armature_modifier_name
+            ):
                 algorithms.apply_modifier(obj, armature_modifier)
 
     def apply_pose_as_rest_pose(self):
@@ -134,16 +136,14 @@ class SkeletonEngine:
 
     def store_z_axis(self):
         logger.info("Importing temporary original skeleton to store z axis")
-        native_armature = file_ops.import_object_from_lib(
-            self.lib_filepath, self.skeleton_template_name, "temp_armature")
-
-        if native_armature:
+        if native_armature := file_ops.import_object_from_lib(
+            self.lib_filepath, self.skeleton_template_name, "temp_armature"
+        ):
             self.armature_z_axis = algorithms.get_all_bones_z_axis(native_armature)
             object_ops.remove_object(native_armature)
 
     def align_bones_z_axis(self):
-        target_armature = self.get_armature()
-        if target_armature:
+        if target_armature := self.get_armature():
             algorithms.select_and_change_mode(target_armature, 'EDIT')
             edit_bones = algorithms.get_edit_bones(target_armature)
             for e_bone in edit_bones:
@@ -153,36 +153,34 @@ class SkeletonEngine:
             algorithms.select_and_change_mode(target_armature, 'POSE')
 
     def load_groups(self, filepath, use_weights=True, clear_all=True):
-        if self.has_data:
-            obj = self.get_body()
-            g_data = file_ops.load_json_data(filepath, "Vertgroups data")
+        if not self.has_data:
+            return
+        obj = self.get_body()
+        g_data = file_ops.load_json_data(filepath, "Vertgroups data")
 
-            if clear_all:
-                algorithms.remove_vertgroups_all(obj)
-            if g_data:
-                group_names = sorted(g_data.keys())
-                for group_name in group_names:
-                    new_group = algorithms.new_vertgroup(obj, group_name)
-                    for vert_data in g_data[group_name]:
-                        if use_weights:
-                            if isinstance(vert_data, list):
-                                new_group.add([vert_data[0]], vert_data[1], 'REPLACE')
-                            else:
-                                logger.info("Error: wrong format for vert weight")
+        if clear_all:
+            algorithms.remove_vertgroups_all(obj)
+        if g_data:
+            group_names = sorted(g_data.keys())
+            for group_name in group_names:
+                new_group = algorithms.new_vertgroup(obj, group_name)
+                for vert_data in g_data[group_name]:
+                    if use_weights:
+                        if isinstance(vert_data, list):
+                            new_group.add([vert_data[0]], vert_data[1], 'REPLACE')
                         else:
-                            if isinstance(vert_data, int):
-                                new_group.add([vert_data], 1.0, 'REPLACE')
-                            else:
-                                logger.info("Error: wrong format for vert group")
+                            logger.info("Error: wrong format for vert weight")
+                    elif isinstance(vert_data, int):
+                        new_group.add([vert_data], 1.0, 'REPLACE')
+                    else:
+                        logger.info("Error: wrong format for vert group")
 
-                logger.info("Group loaded from %s", file_ops.simple_path(filepath))
-            else:
-                logger.warning("Vgroup file problem %s", file_ops.simple_path(filepath))
+            logger.info("Group loaded from %s", file_ops.simple_path(filepath))
+        else:
+            logger.warning("Vgroup file problem %s", file_ops.simple_path(filepath))
 
     def get_body(self):
-        if self.has_data:
-            return file_ops.get_object_by_name(self.body_name)
-        return None
+        return file_ops.get_object_by_name(self.body_name) if self.has_data else None
 
     def get_armature(self):
         if self.has_data:
@@ -221,19 +219,23 @@ class SkeletonEngine:
                 if tail_name in self.joints_database:
                     tail_location = self.calculate_joint_location(body, self.joints_database[tail_name])
 
-                    if self.joints_offset_database:
-                        if tail_name in self.joints_offset_database:
-                            tail_delta = mathutils.Vector(self.joints_offset_database[tail_name])
-                            tail_location += tail_delta
+                    if (
+                        self.joints_offset_database
+                        and tail_name in self.joints_offset_database
+                    ):
+                        tail_delta = mathutils.Vector(self.joints_offset_database[tail_name])
+                        tail_location += tail_delta
                     e_bone.tail = tail_location
 
                 if head_name in self.joints_database:
                     head_location = self.calculate_joint_location(body, self.joints_database[head_name])
 
-                    if self.joints_offset_database:
-                        if head_name in self.joints_offset_database:
-                            head_delta = mathutils.Vector(self.joints_offset_database[head_name])
-                            head_location += head_delta
+                    if (
+                        self.joints_offset_database
+                        and head_name in self.joints_offset_database
+                    ):
+                        head_delta = mathutils.Vector(self.joints_offset_database[head_name])
+                        head_location += head_delta
                     e_bone.head = head_location
 
             algorithms.select_and_change_mode(armat, "OBJECT")

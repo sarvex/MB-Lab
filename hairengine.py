@@ -43,7 +43,7 @@ from . import file_ops
 def get_hair_data(fileName):
     data_dir = file_ops.get_data_path()
     hair_dir = os.path.join(data_dir, "Particle_Hair")
-    fn = fileName + '_hair.json'
+    fn = f'{fileName}_hair.json'
     fpath = os.path.join(hair_dir, fn)
     with open(fpath, 'r') as f:
         data = js.load(f)
@@ -116,15 +116,15 @@ def add_hair(hair_object, mat_name, style):
         hair = add_HPshader_node(material, 'ShaderNodeBsdfHairPrincipled', (100,100))
         parametrization = data[0]
         hair.parametrization = parametrization #parametrization #['ABSORPTION', 'COLOR', 'MELANIN']
-        if parametrization == 'COLOR': #Direct Coloring
+        if parametrization == 'ABSORPTION':
+            hair.inputs[4].default_value = data[5] #Absorbtion Coefficient
+        elif parametrization == 'COLOR':
             hair.inputs[0].default_value = data[1] #Color
-        if parametrization == 'MELANIN': #Melanin Concetration
+        elif parametrization == 'MELANIN':
             hair.inputs[1].default_value = data[2] #Melanin
             hair.inputs[2].default_value = data[3] #Melanin Redness
             hair.inputs[3].default_value = data[4] #Tint
             hair.inputs[10].default_value = data[11] #Random Color
-        if parametrization == 'ABSORPTION': #Absorbtion Coefficient    
-            hair.inputs[4].default_value = data[5] #Absorbtion Coefficient
         hair.inputs[5].default_value = data[6] #Roughness
         hair.inputs[6].default_value = data[7] #Radial Roughness
         hair.inputs[7].default_value = data[8] #Coat
@@ -144,15 +144,15 @@ def add_hairP_shader(mat_name, parametrization, v0, v1, v2, v3, v4, v5, v6, v7, 
     output = add_HPshader_node(material, 'ShaderNodeOutputMaterial', (400,100))
     hair = add_HPshader_node(material, 'ShaderNodeBsdfHairPrincipled', (100,100))
     hair.parametrization = parametrization #['ABSORPTION', 'COLOR', 'MELANIN']
-    if parametrization == 'COLOR': #Direct Coloring
+    if parametrization == 'ABSORPTION':
+        hair.inputs[4].default_value = v4 #Absorbtion Coefficient
+    elif parametrization == 'COLOR':
         hair.inputs[0].default_value = v0 #Color
-    if parametrization == 'MELANIN': #Melanin Concetration
+    elif parametrization == 'MELANIN':
         hair.inputs[1].default_value = v1 #Melanin
         hair.inputs[2].default_value = v2 #Melanin Redness
         hair.inputs[3].default_value = v3 #Tint
         hair.inputs[10].default_value = v10 #Random Color
-    if parametrization == 'ABSORPTION': #    
-        hair.inputs[4].default_value = v4 #Absorbtion Coefficient
     hair.inputs[5].default_value = v5 #Roughness
     hair.inputs[6].default_value = v6 #Radial Roughness
     hair.inputs[7].default_value = v7 #Coat
@@ -164,13 +164,11 @@ def add_hairP_shader(mat_name, parametrization, v0, v1, v2, v3, v4, v5, v6, v7, 
 
 def change_hair_shader(style):
     context = bpy.context
-    fileName = get_hair_npz("CY_shader_presets.npz")
     if context.scene.mblab_use_cycles:
         mat_name = context.object.name
+        fileName = get_hair_npz("CY_shader_presets.npz")
         data = numpy_ops.get_data_value(style, fileName)
         add_hairP_shader(mat_name, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12])
-    if context.scene.mblab_use_eevee:
-        pass
 
 # Get Principled Hair shader settings
 def get_p_hair_settings(object):
@@ -246,21 +244,18 @@ def get_hair_particle(object):
     count_p = len(p)
     # Cooordinates
     p_dict = {}
-    for i, c in [c for c in enumerate(p)]:
-        h_keys = []
+    for i, c in list(enumerate(p)):
         hk = p[i].hair_keys
         count_hk = len(hk)
-        for pt in hk:
-            h_keys.append(pt.co)
-        p_dict.update({i: h_keys})
+        h_keys = [pt.co for pt in hk]
+        p_dict[i] = h_keys
     return p_dict
 
 # ------------------------------------------------------------------------
 
 def get_hair_dir():
     data_dir = file_ops.get_data_path()
-    hair_dir = os.path.join(data_dir, "Hair_Data")
-    return hair_dir
+    return os.path.join(data_dir, "Hair_Data")
 
 def get_hair_npz(fileName):
     hair_dir = get_hair_dir()

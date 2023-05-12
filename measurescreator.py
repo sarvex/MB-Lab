@@ -69,116 +69,126 @@ score_weights = sorted([
     "upperleg_bottom_girth", "buttock_girth", "chest_width_X"])
 
 def create_measures_file(filepath):
-    file = {}
-    file["body_height_Z_parts"] = ["head_height_Z",
-        "neck_height_Z", "torso_height_Z", "buttock_height_Z",
-        "upperleg_length", "lowerleg_length", "feet_height_Z"]
-    file["measures"] = {
-        "upperleg_length": [],
-        "buttock_depth_Y": [],
-        "buttock_width_X": [],
-        "wrist_girth": [],
-        "upperarm_axillary_girth": [],
-        "neck_girth": [],
-        "lowerleg_length": [],
-        "lowerleg_bottom_girth": [],
-        "head_height_Z": [],
-        "feet_length": [],
-        "lowerleg_calf_girth": [],
-        "feet_heel_width": [],
-        "torso_height_Z": [],
-        "upperleg_top_girth": [],
-        "shoulders_width": [],
-        "feet_height_Z": [],
-        "waist_girth": [],
-        "elbow_girth": [],
-        "head_width_X": [],
-        "chest_depth_Y": [],
-        "upperleg_bottom_girth": [],
-        "forearm_length": [],
-        "buttock_height_Z": [],
-        "hands_width": [],
-        "hands_length": [],
-        "chest_girth": [],
-        "upperarm_length": [],
-        "feet_width": [],
-        "body_height_Z": [],
-        "neck_height_Z": [],
-        "head_length": [],
-        "buttock_girth": [],
-        "chest_width_X": []}
-    file["relations"] = [
-        ["body_height_Z", "Body_Size"],
-        ["torso_height_Z", "Torso_Length"],
-        ["chest_width_X", "Chest_SizeX"],
-        ["chest_depth_Y", "Chest_SizeY"],
-        ["chest_girth", "Chest_Girth"],
-        ["neck_girth", "Neck_Size"],
-        ["neck_girth", "Neck_Back"],
-        ["head_width_X", "Head_SizeX"],
-        ["head_length", "Head_SizeY"],
-        ["head_height_Z", "Head_SizeZ"],
-        ["neck_height_Z", "Neck_Length"],
-        ["shoulders_width", "Shoulders_SizeX"],
-        ["buttock_height_Z", "Pelvis_Length"],
-        ["buttock_depth_Y", "Pelvis_SizeY"],
-        ["buttock_width_X", "Pelvis_SizeX"],
-        ["buttock_girth", "Pelvis_Girth"],
-        ["waist_girth", "Stomach_LocalFat"],
-        ["waist_girth", "Stomach_Volume"],
-        ["upperleg_length", "Legs_UpperlegLength"],
-        ["lowerleg_length", "Legs_LowerlegLength"],
-        ["upperleg_top_girth", "Legs_UpperlegSize"],
-        ["upperleg_top_girth", "Legs_UpperThighGirth"],
-        ["upperleg_bottom_girth", "Legs_LowerThighGirth"],
-        ["lowerleg_calf_girth", "Legs_CalfGirth"],
-        ["lowerleg_bottom_girth", "Legs_AnkleSize"],
-        ["upperarm_axillary_girth", "Arms_UpperarmGirth"],
-        ["upperarm_axillary_girth", "Shoulders_Size"],
-        ["upperarm_length", "Arms_UpperarmLength"],
-        ["forearm_length", "Arms_ForearmLength"],
-        ["elbow_girth", "Elbows_Size"],
-        ["wrist_girth", "Wrists_Size"],
-        ["feet_width", "Feet_SizeX"],
-        ["feet_length", "Feet_SizeY"],
-        ["feet_height_Z", "Feet_SizeZ"],
-        ["hands_length", "Hands_Length"],
-        ["hands_width", "Hands_FingersInterDist"],
-        ["feet_heel_width", "Feet_HeelWidth"]]
-    file["score_weights"] = {
-        "upperleg_length": 1,
-        "buttock_depth_Y": 1,
-        "buttock_width_X": 1,
-        "wrist_girth": 1,
-        "upperarm_axillary_girth": 3,
-        "lowerleg_length": 1,
-        "lowerleg_bottom_girth": 3,
-        "head_height_Z": 1,
-        "feet_length": 0.5,
-        "lowerleg_calf_girth": 3,
-        "feet_heel_width": 0.5,
-        "torso_height_Z": 1,
-        "upperleg_top_girth": 3,
-        "shoulders_width": 2,
-        "feet_height_Z": 0.5,
-        "waist_girth": 3,
-        "elbow_girth": 3,
-        "head_width_X": 1,
-        "chest_depth_Y": 1,
-        "neck_girth": 0.5,
-        "forearm_length": 1,
-        "head_length": 1,
-        "buttock_height_Z": 1,
-        "hands_length": 0.5,
-        "hands_width": 0.5,
-        "chest_girth": 3,
-        "upperarm_length": 1,
-        "feet_width": 0.5,
-        "body_height_Z": 1,
-        "neck_height_Z": 1,
-        "upperleg_bottom_girth": 3,
-        "buttock_girth": 3,
-        "chest_width_X": 1}
+    file = {
+        "body_height_Z_parts": [
+            "head_height_Z",
+            "neck_height_Z",
+            "torso_height_Z",
+            "buttock_height_Z",
+            "upperleg_length",
+            "lowerleg_length",
+            "feet_height_Z",
+        ],
+        "measures": {
+            "upperleg_length": [],
+            "buttock_depth_Y": [],
+            "buttock_width_X": [],
+            "wrist_girth": [],
+            "upperarm_axillary_girth": [],
+            "neck_girth": [],
+            "lowerleg_length": [],
+            "lowerleg_bottom_girth": [],
+            "head_height_Z": [],
+            "feet_length": [],
+            "lowerleg_calf_girth": [],
+            "feet_heel_width": [],
+            "torso_height_Z": [],
+            "upperleg_top_girth": [],
+            "shoulders_width": [],
+            "feet_height_Z": [],
+            "waist_girth": [],
+            "elbow_girth": [],
+            "head_width_X": [],
+            "chest_depth_Y": [],
+            "upperleg_bottom_girth": [],
+            "forearm_length": [],
+            "buttock_height_Z": [],
+            "hands_width": [],
+            "hands_length": [],
+            "chest_girth": [],
+            "upperarm_length": [],
+            "feet_width": [],
+            "body_height_Z": [],
+            "neck_height_Z": [],
+            "head_length": [],
+            "buttock_girth": [],
+            "chest_width_X": [],
+        },
+        "relations": [
+            ["body_height_Z", "Body_Size"],
+            ["torso_height_Z", "Torso_Length"],
+            ["chest_width_X", "Chest_SizeX"],
+            ["chest_depth_Y", "Chest_SizeY"],
+            ["chest_girth", "Chest_Girth"],
+            ["neck_girth", "Neck_Size"],
+            ["neck_girth", "Neck_Back"],
+            ["head_width_X", "Head_SizeX"],
+            ["head_length", "Head_SizeY"],
+            ["head_height_Z", "Head_SizeZ"],
+            ["neck_height_Z", "Neck_Length"],
+            ["shoulders_width", "Shoulders_SizeX"],
+            ["buttock_height_Z", "Pelvis_Length"],
+            ["buttock_depth_Y", "Pelvis_SizeY"],
+            ["buttock_width_X", "Pelvis_SizeX"],
+            ["buttock_girth", "Pelvis_Girth"],
+            ["waist_girth", "Stomach_LocalFat"],
+            ["waist_girth", "Stomach_Volume"],
+            ["upperleg_length", "Legs_UpperlegLength"],
+            ["lowerleg_length", "Legs_LowerlegLength"],
+            ["upperleg_top_girth", "Legs_UpperlegSize"],
+            ["upperleg_top_girth", "Legs_UpperThighGirth"],
+            ["upperleg_bottom_girth", "Legs_LowerThighGirth"],
+            ["lowerleg_calf_girth", "Legs_CalfGirth"],
+            ["lowerleg_bottom_girth", "Legs_AnkleSize"],
+            ["upperarm_axillary_girth", "Arms_UpperarmGirth"],
+            ["upperarm_axillary_girth", "Shoulders_Size"],
+            ["upperarm_length", "Arms_UpperarmLength"],
+            ["forearm_length", "Arms_ForearmLength"],
+            ["elbow_girth", "Elbows_Size"],
+            ["wrist_girth", "Wrists_Size"],
+            ["feet_width", "Feet_SizeX"],
+            ["feet_length", "Feet_SizeY"],
+            ["feet_height_Z", "Feet_SizeZ"],
+            ["hands_length", "Hands_Length"],
+            ["hands_width", "Hands_FingersInterDist"],
+            ["feet_heel_width", "Feet_HeelWidth"],
+        ],
+        "score_weights": {
+            "upperleg_length": 1,
+            "buttock_depth_Y": 1,
+            "buttock_width_X": 1,
+            "wrist_girth": 1,
+            "upperarm_axillary_girth": 3,
+            "lowerleg_length": 1,
+            "lowerleg_bottom_girth": 3,
+            "head_height_Z": 1,
+            "feet_length": 0.5,
+            "lowerleg_calf_girth": 3,
+            "feet_heel_width": 0.5,
+            "torso_height_Z": 1,
+            "upperleg_top_girth": 3,
+            "shoulders_width": 2,
+            "feet_height_Z": 0.5,
+            "waist_girth": 3,
+            "elbow_girth": 3,
+            "head_width_X": 1,
+            "chest_depth_Y": 1,
+            "neck_girth": 0.5,
+            "forearm_length": 1,
+            "head_length": 1,
+            "buttock_height_Z": 1,
+            "hands_length": 0.5,
+            "hands_width": 0.5,
+            "chest_girth": 3,
+            "upperarm_length": 1,
+            "feet_width": 0.5,
+            "body_height_Z": 1,
+            "neck_height_Z": 1,
+            "upperleg_bottom_girth": 3,
+            "buttock_girth": 3,
+            "chest_width_X": 1,
+        },
+    }
     with open(filepath, "w") as j_file:
         json.dump(file, j_file, indent=2)
 
@@ -190,19 +200,22 @@ def check_inconsistancies(key):
     if measures_name == '':
         return # Just in case...
     # we create the txt file content.
-    txt_content = []
-    txt_content.append(str("Header : Check inconstancies in file " + measures_name))
+    txt_content = [str(f"Header : Check inconstancies in file {measures_name}")]
     # We open the measures file and if it exists, we load it.
     measures_file = get_set_measures_file(measures_name)
-    if measures_file == None:
-        txt_content.append(str("Measures file : " + measures_name + " doesn't exist"))
-        txt_content.append(str("Stop checking."))
+    if measures_file is None:
+        txt_content.extend(
+            (
+                str(f"Measures file : {measures_name} doesn't exist"),
+                "Stop checking.",
+            )
+        )
     else:
-        txt_content.append(str("Measures file : " + measures_name))
+        txt_content.append(str(f"Measures file : {measures_name}"))
     # We check if morph file exist and if yes, we load it.
     morph_name = creation_tools_ops.get_content(key, "shared_morphs_file")
     if morph_name == "":
-        txt_content.append(str("Morph file is unknown, stop checking."))
+        txt_content.append("Morph file is unknown, stop checking.")
     elif measures_file != None:
         addon_directory = os.path.dirname(os.path.realpath(__file__))
         filepath = os.path.join(
@@ -210,9 +223,13 @@ def check_inconsistancies(key):
             creation_tools_ops.get_data_directory(),
             "morphs", morph_name)
         morph_file = file_ops.load_json_data(filepath, "")
-        txt_content.append("Morph file : " + morph_name)
-        txt_content.append("---------------")
-        txt_content.append("Check morph file content :")
+        txt_content.extend(
+            (
+                f"Morph file : {morph_name}",
+                "---------------",
+                "Check morph file content :",
+            )
+        )
         # Now we check "relations" key and check if any morphs are missing.
         keys = morph_file.keys()
         is_in = False
@@ -228,10 +245,14 @@ def check_inconsistancies(key):
                     break
             if not is_in:
                 perfect = False
-                txt_content.append(str("Not in morph file : " + couple[1]))
+                txt_content.append(str(f"Not in morph file : {couple[1]}"))
         if perfect:
-            txt_content.append("All measures correspond to a valid morph.")
-            txt_content.append("---------------")
+            txt_content.extend(
+                (
+                    "All measures correspond to a valid morph.",
+                    "---------------",
+                )
+            )
     # At the end we save the file.
     final_name = get_inconsistancies_file_name(key)
     with open(final_name, "w") as j_file:
@@ -286,7 +307,7 @@ def set_current_measures_file(measures_name):
     global recover_weights_first
     tmp = get_set_measures_file(measures_name)
     if len(current_measures_file) < 1:
-        if tmp == None:
+        if tmp is None:
             return
         two_points_index = 0
         girth_index = 0
@@ -303,21 +324,17 @@ def set_current_measures_file(measures_name):
 
 def extract_points(measures_name, points_name):
     global measures_files
-    if not measures_name in measures_files:
+    if measures_name not in measures_files:
         return []
     measures = measures_files[measures_name]["measures"]
-    if not points_name in measures:
-        return []
-    return measures[points_name]
+    return [] if points_name not in measures else measures[points_name]
 
 def extract_score_weights(measures_name, weight_name):
     global measures_files
-    if not measures_name in measures_files:
+    if measures_name not in measures_files:
         return []
     score_weights = measures_files[measures_name]["score_weights"]
-    if not weight_name in score_weights:
-        return []
-    return score_weights[weight_name]
+    return [] if weight_name not in score_weights else score_weights[weight_name]
     
 def save_measures_file():
     global current_measures_file
@@ -379,7 +396,7 @@ def get_two_points(direction=0):
     global two_points_index
     global measures_parts_points
     obj = bpy.context.object
-    if obj == None or len(current_measures_file) < 1:
+    if obj is None or len(current_measures_file) < 1:
         return None
     tmp = list(current_measures_file.keys())
     file_name = tmp[0]
@@ -401,7 +418,7 @@ def get_two_points(direction=0):
     """if mh == None: # Because obj == None
         return None"""
     hist = mh.get_mesh_history(measure_name)
-    if hist == None:
+    if hist is None:
         hist = mh.create_mesh_history(measure_name)
         # The history is created, so we copy values from file
         file_points_value = current_measures_file[file_name]["measures"][measure_name]
@@ -414,7 +431,7 @@ def get_girth(direction=0):
     global girth_index
     global measures_parts_girths
     obj = bpy.context.object
-    if obj == None or len(current_measures_file) < 1:
+    if obj is None or len(current_measures_file) < 1:
         return None
     tmp = list(current_measures_file.keys())
     file_name = tmp[0]
@@ -436,7 +453,7 @@ def get_girth(direction=0):
     """if mh == None: # Because obj == None
         return None"""
     hist = mh.get_mesh_history(measure_name)
-    if hist == None:
+    if hist is None:
         hist = mh.create_mesh_history(measure_name)
         # The history is created, so we copy values from file
         file_girth_value = current_measures_file[file_name]["measures"][measure_name]
@@ -454,18 +471,18 @@ def get(type, direction=0):
 
 def get_mesh_handling(file_name, obj=None):
     global mesh_handling_dict
-    if not file_name in mesh_handling_dict:
-        if obj == None:
+    if file_name not in mesh_handling_dict:
+        if obj is None:
             return None
         mesh_handling_dict[file_name] = mesh_ops.MeshHandling(file_name, obj)
     return mesh_handling_dict[file_name]
 
 def recover():
     hist = get_two_points()
-    if hist == None:
+    if hist is None:
         hist = get_girth()
-        if hist == None:
-            return
+    if hist is None:
+        return
     hist.recover('VERTEX')
 
 # -------------------------------------

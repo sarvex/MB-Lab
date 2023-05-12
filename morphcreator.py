@@ -120,19 +120,19 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------
 def get_body_parts(key = None):
     global body_parts
-    if key == None:
+    if key is None:
         return body_parts
     return algorithms.get_enum_property_item(key, body_parts)
 
 def get_spectrum(key = None):
     global spectrum
-    if key == None:
+    if key is None:
         return spectrum
     return algorithms.get_enum_property_item(key, spectrum)
 
 def get_min_max(key = None):
     global min_max
-    if key == None:
+    if key is None:
         return min_max
     return algorithms.get_enum_property_item(key, min_max)
 
@@ -166,7 +166,7 @@ def get_model_and_gender():
             temp = algorithms.get_template_model(obj).split("_")
         except:
             return "Bug"
-        morphs_names[0] = temp[1] + "_" + temp[2] + "_morphs"
+        morphs_names[0] = f"{temp[1]}_{temp[2]}_morphs"
     return morphs_names[0]
 
 def get_body_type():
@@ -209,12 +209,7 @@ def create_vertices_list_from_list(vertices_list):
     return array
 
 def are_points_different(point_a, point_b):
-    #compare 2 lists ( under form [a, b, c, n...] )
-    #NO security...
-    for i in range(len(point_a)):
-        if point_a[i] != point_b[i]:
-            return True
-    return False
+    return any(point_a[i] != point_b[i] for i in range(len(point_a)))
 
 def insert_number_in_list(list, index=0, start=0):
     #Insert a number from 'start' in each sub-list at index 'index'. No step here.
@@ -249,7 +244,7 @@ def substract_with_index(list_a, list_b):
     for i in range(length):
         substract = substract_vertices_lists(list_a[i], list_b[i])
         if len(substract) > 0:
-            substract[0:0] = [i]
+            substract[:0] = [i]
             return_list.append(substract)
     return return_list
 
@@ -258,13 +253,14 @@ def get_all_morph_files(data_path, data_type_path, body_type):
     #Used when the engine loads morphs librairies, here the user ones.
     #Can be used for both types of files : gender and specific type.
     dir = os.path.join(data_path, data_type_path)
-    found_files = []
     body_type_split = body_type.split('_')[:2]
-    for item in os.listdir(dir):
-        if item != body_type and item.count("extra") < 1:
-            if item.split('_')[:2] == body_type_split:
-                found_files += [os.path.join(dir, item)]
-    return found_files
+    return [
+        os.path.join(dir, item)
+        for item in os.listdir(dir)
+        if item != body_type
+        and item.count("extra") < 1
+        and item.split('_')[:2] == body_type_split
+    ]
 
 # ------------------------------------------------------------------------
 #    All methods/classes to help creating combined morphs
@@ -280,9 +276,7 @@ def is_modifier_combined_morph(humanoid, name="", category=""):
         return True # Just in case...
     cat = humanoid.get_category(category)
     modif = cat.get_modifier(name)
-    if modif == None:
-        return True
-    return False
+    return modif is None
 
 # A special and dirty function to help and simplify __init__
 def secure_modifier_name(enum_items, items):
@@ -301,17 +295,14 @@ def set_modifiers_for_combined_morphs(final_name="", morphs_name=[], minmax=[]):
     modifiers_for_combined[1] = morphs_name
     for i in range(len(minmax)):
         if len(minmax[i]) > 0:
-            if minmax[i] == "min":
-                minmax[i] = 0
-            else:
-                minmax[i] = 1
+            minmax[i] = 0 if minmax[i] == "min" else 1
         else:
             minmax[i] = 0.5
     modifiers_for_combined[2] = minmax
 
 def update_for_combined_morphs(humanoid):
     global modifiers_for_combined
-    if len(modifiers_for_combined[0]) < 1 or humanoid == None:
+    if len(modifiers_for_combined[0]) < 1 or humanoid is None:
         return
     obj = humanoid.get_object()
     names = modifiers_for_combined[1]
@@ -331,7 +322,9 @@ def is_phenotype_exists(body_type, name):
     if len(body_type) < 1 or len(name) < 1:
         return False
     try:
-        path = os.path.join(file_ops.get_data_path(), "phenotypes", body_type+"_ptypes")
+        path = os.path.join(
+            file_ops.get_data_path(), "phenotypes", f"{body_type}_ptypes"
+        )
         for database_file in os.listdir(path):
             the_item, extension = os.path.splitext(database_file)
             if the_item == name:
@@ -345,14 +338,13 @@ def save_phenotype(path, humanoid):
     # in its dedicated file.
     # If file already exists, it's replaced.
     logger.info("Exporting character to {0}".format(file_ops.simple_path(path)))
-    obj = humanoid.get_object()
-    char_data = {"structural": dict()}
+    if obj := humanoid.get_object():
+        char_data = {"structural": {}}
 
-    if obj:
         for prop in humanoid.character_data.keys():
             if humanoid.character_data[prop] != 0.5 and not prop.startswith("Expressions_"):
                 char_data["structural"][prop] = round(humanoid.character_data[prop], 2)
-        
+
         with open(path, "w") as j_file:
             json.dump(char_data, j_file, indent=2)
         j_file.close()
@@ -376,10 +368,15 @@ def is_preset_exists(preset_folder, name):
 
 def save_preset(filepath, humanoid, integrate_material=False):
     logger.info("Exporting character to {0}".format(file_ops.simple_path(filepath)))
-    obj = humanoid.get_object()
-    char_data = {"manuellab_vers": humanoid.lab_vers, "structural": dict(), "metaproperties": dict(), "materialproperties": dict(), "materialproperties": dict()}
+    if obj := humanoid.get_object():
+        char_data = {
+            "manuellab_vers": humanoid.lab_vers,
+            "structural": {},
+            "metaproperties": {},
+            "materialproperties": {},
+            "materialproperties": {},
+        }
 
-    if obj:
         # Structural
         for prop in humanoid.character_data.keys():
             if humanoid.character_data[prop] != 0.5 and not prop.startswith("Expressions_"):
@@ -416,17 +413,13 @@ def get_gender_type_files(humanoid, type, with_new=False):
     gender, body_type = get_all_compatible_files(humanoid)
     return_list = []
     if type == "Gender":
-        for file in gender:
-            return_list.append((file+".json", file, file))
-        if with_new:
-            return_list.append(("NEW", "New file", "Add a new file"))
-        return return_list
+        return_list.extend((f"{file}.json", file, file) for file in gender)
     else:
-        for file in body_type:
-            return_list.append((file+".json", file, file))
-        if with_new:
-            return_list.append(("NEW", "New file", "Add a new file"))
-        return return_list
+        return_list.extend((f"{file}.json", file, file) for file in body_type)
+
+    if with_new:
+        return_list.append(("NEW", "New file", "Add a new file"))
+    return return_list
         
 # return all compatible files
 # return : gender, body_type
@@ -437,8 +430,8 @@ def get_all_compatible_files(humanoid):
     global gender_cmd_morphs_files
     global body_type_cmd_morphs_files
     global properties_for_cmd
-    
-    if humanoid == None:
+
+    if humanoid is None:
         return gender_cmd_morphs_files, body_type_cmd_morphs_files
     if len(gender_cmd_morphs_files) > 0 or len(body_type_cmd_morphs_files) > 0:
         return gender_cmd_morphs_files, body_type_cmd_morphs_files
@@ -449,7 +442,7 @@ def get_all_compatible_files(humanoid):
     for file in list_dir:
         split_name = file.split("_")
         try:
-            if split_name[0] == "m" or split_name[0] == "f" or split_name[0] == "u":
+            if split_name[0] in ["m", "f", "u"]:
                 body_type_cmd_morphs_files.append(file.split(".")[0])
             else:
                 gender_cmd_morphs_files.append(file.split(".")[0])
@@ -470,10 +463,10 @@ def get_cmd_properties(file):
         splitted = ""
         for morph in content.keys():
             splitted = morph.split("_")
-            morph_name = splitted[0] + "_" + splitted[1]
-            key = "cmd_" + morph_name # The key, used later for setattr
-            if not key in tmp:
-                tmp[key] = morph_name + "_"
+            morph_name = f"{splitted[0]}_{splitted[1]}"
+            key = f"cmd_{morph_name}"
+            if key not in tmp:
+                tmp[key] = f"{morph_name}_"
     return properties_for_cmd[file]
     
 def get_all_cmd_attr_names(humanoid):
@@ -486,7 +479,7 @@ def get_all_cmd_attr_names(humanoid):
     for file in complete_files:
         props = get_cmd_properties(file)
         for prop in props.keys():
-            if not prop in return_properties:
+            if prop not in return_properties:
                 return_properties.append(prop)
     return return_properties
     
@@ -511,14 +504,14 @@ def get_morph_file_categories(file_name):
 def get_morphs_in_category(file, category):
     global properties_for_cmd
     global cmd_morphs_in_category
-    
+
     if len(cmd_morphs_in_category) > 0:
         return cmd_morphs_in_category
     content = properties_for_cmd[file]
     splitted = ""
     for key, value in content.items():
         splitted = value.split("_")[0]
-        if splitted == category and not key in cmd_morphs_in_category:
+        if splitted == category and key not in cmd_morphs_in_category:
             cmd_morphs_in_category.append(key)
     cmd_morphs_in_category = sorted(cmd_morphs_in_category)
     return cmd_morphs_in_category
@@ -530,8 +523,8 @@ def update_cmd_file(file_name):
     global current_cmd_morph_file
     global cmd_categories_in_file
     global cmd_morphs_in_category
-    
-    if file_name == None:
+
+    if file_name is None:
         current_cmd_morph_file = ""
         cmd_categories_in_file.clear()
         cmd_morphs_in_category.clear()
@@ -560,10 +553,11 @@ def save_morph_file_raw_content(file_name, data):
 def get_selected_cmd_morphs(source_file, obj):
     if len(properties_for_cmd[source_file]) < 1:
         get_cmd_properties(source_file)
-    selected_morphs_list = []
-    for key, value in properties_for_cmd[source_file].items():
-        if hasattr(obj, key) and getattr(obj, key):
-            selected_morphs_list.append(value)
+    selected_morphs_list = [
+        value
+        for key, value in properties_for_cmd[source_file].items()
+        if hasattr(obj, key) and getattr(obj, key)
+    ]
     return sorted(selected_morphs_list)
 
 # Reset all selected morphs
@@ -571,7 +565,11 @@ def reset_cmd_morphs(obj):
     cmd_to_reset = []
     for content in properties_for_cmd.values():
         for key in content.keys():
-            if hasattr(obj, key) and getattr(obj, key) and not key in cmd_to_reset:
+            if (
+                hasattr(obj, key)
+                and getattr(obj, key)
+                and key not in cmd_to_reset
+            ):
                 cmd_to_reset.append(key)
     for reset in cmd_to_reset:
         setattr(obj, reset, False)
@@ -593,14 +591,14 @@ def get_morphs_list(source_file, obj):
 # Do the copy/move/delete operations from input_file to output_file.
 # copy = False and delete = False ==> rename, indexes must match for old->new name
 def cmd_morphs_action(input_name, output_name=None, morphs_names=[], new_name="", copy=True, delete=False):
-    if morphs_names == None or len(morphs_names) < 1:
+    if morphs_names is None or len(morphs_names) < 1:
         return
     input_file = get_morph_file_raw_content(input_name)
     if copy:
-        if output_name == None:
+        if output_name is None:
             return
         output_file = get_morph_file_raw_content(output_name)
-        if output_file == None:
+        if output_file is None:
             output_file = {}
         for morph in morphs_names:
             output_file[morph] = input_file[morph]
@@ -614,7 +612,7 @@ def cmd_morphs_action(input_name, output_name=None, morphs_names=[], new_name=""
         final_name = ""
         for name in morphs_names:
             splitted = name.split("_")
-            final_name = splitted[0] + "_" + new_name + "_" + splitted[2]
+            final_name = f"{splitted[0]}_{new_name}_{splitted[2]}"
             input_file[final_name] = input_file[name][:]
             del input_file[name]
         save_morph_file_raw_content(input_name, input_file)
@@ -622,7 +620,11 @@ def cmd_morphs_action(input_name, output_name=None, morphs_names=[], new_name=""
 def backup_morph_file(extra_name):
     if len(current_cmd_morph_file) < 1:
         return
-    path = os.path.join(file_ops.get_data_path(), "morphs", current_cmd_morph_file + "_" + extra_name + ".json")
+    path = os.path.join(
+        file_ops.get_data_path(),
+        "morphs",
+        f"{current_cmd_morph_file}_{extra_name}.json",
+    )
     content_for_cmd = get_morph_file_raw_content(current_cmd_morph_file)
     file_ops.save_json_data(path, content_for_cmd)
 
@@ -636,17 +638,11 @@ def get_all_morphs(index, file):
         return []
     #----------
     index_int = 0
-    if isinstance(index, str):
-        index_int = int(index)
-    else:
-        index_int = index
+    index_int = int(index) if isinstance(index, str) else index
     #----------
     return_list = []
     for key, items in file.items():
-        for item in items:
-            if item[0] == index_int:
-                return_list.append(key)
-            #break
+        return_list.extend(key for item in items if item[0] == index_int)
     #----------
     return return_list
 
@@ -656,18 +652,19 @@ def extract_indices_from_a_morph(name, file):
     if len(file) == 0:
         return []
     #----------
-    if not name in file:
+    if name not in file:
         return []
     #----------
     splitted = name.split("_")
-    cut = splitted[0] + "_" + splitted[1] + "_min"
-    for key in file.keys():
-        if key.startswith(cut):
-            return_list = []
-            for item in file[key]:
-                return_list.append(item[0])
-            return return_list
-    return []
+    cut = f"{splitted[0]}_{splitted[1]}_min"
+    return next(
+        (
+            [item[0] for item in file[key]]
+            for key in file.keys()
+            if key.startswith(cut)
+        ),
+        [],
+    )
 
 # index = the index.
 # morph = the content of a morph like [625, 0.0, -0.0003, 0.0], [626, ...
@@ -676,15 +673,8 @@ def is_index_in_morph(index, morph):
         return False
     #----------
     index_int = 0
-    if isinstance(index, str):
-        index_int = int(index)
-    else:
-        index_int = index
-    #----------
-    for content in morph:
-        if content[0] == index_int:
-            return True
-    return False
+    index_int = int(index) if isinstance(index, str) else index
+    return any(content[0] == index_int for content in morph)
     
 # Return all "Feet_Size" like and skip "_min" or "_max"
 def clean_redundant_morphs(morphs_keys):
@@ -693,30 +683,19 @@ def clean_redundant_morphs(morphs_keys):
     cleaned = ""
     for item in morphs_keys:
         splitted = item.split("_")
-        cleaned = splitted[0] + "_" + splitted[1] + "_"
-        if not cleaned in cleaned_list:
+        cleaned = f"{splitted[0]}_{splitted[1]}_"
+        if cleaned not in cleaned_list:
             cleaned_list.append(cleaned)
-    count = 0
-    for item in cleaned_list:
+    for count, item in enumerate(cleaned_list):
         splitted = item.split("_")
         splitted_comb = splitted[1].split("-")
         comb_length = len(splitted_comb)
-        comb_end = ""
-        for i in range(comb_length):
-            if i == 0:
-                comb_end += "min"
-            else:
-                comb_end += "-min"
+        comb_end = "".join("min" if i == 0 else "-min" for i in range(comb_length))
         cleaned_list[count] = item + comb_end
-        count += 1
     return cleaned_list
 
 def get_true_number(boolean_list):
-    counter = 0
-    for bool in boolean_list:
-        if bool:
-            counter += 1
-    return counter
+    return sum(1 for bool in boolean_list if bool)
 
 # Here we try to know all common morphs from a list.
 # morphs_list = [] and "Shoulders_Length_max" kind of name
@@ -740,11 +719,7 @@ def intersect_lists(list_a, list_b):
         return list_b
     if len(list_b) < 1:
         return list_a
-    list_c = []
-    for index in list_a:
-        if index in list_b:
-            list_c.append(index)
-    return list_c
+    return [index for index in list_a if index in list_b]
 
 # the method returns 2 values, the vector, and its length.
 def create_vector(x, y, z):
@@ -767,8 +742,8 @@ def create_template_file(filepath):
     final_dict = {}
     value = [[1, 0.0, 0.0, 0.0]]
     for morph_name in essential_morphs:
-        min = morph_name + "_min"
-        max = morph_name + "_max"
+        min = f"{morph_name}_min"
+        max = f"{morph_name}_max"
         final_dict[min] = value
         final_dict[max] = value
     file_ops.save_json_data(filepath, final_dict)
@@ -792,8 +767,7 @@ def check_needed_morphs(key):
     if morphs_name == '':
         return # Just in case...
     # we create the txt file content.
-    txt_content = []
-    txt_content.append(str("Header : Check needed morphs in file " + morphs_name))
+    txt_content = [str(f"Header : Check needed morphs in file {morphs_name}")]
     # We open the morphs file and if it exists, we load it.
     addon_directory = os.path.dirname(os.path.realpath(__file__))
     filepath = os.path.join(
@@ -801,23 +775,26 @@ def check_needed_morphs(key):
         creation_tools_ops.get_data_directory(),
         "morphs", morphs_name)
     morphs_file = file_ops.load_json_data(filepath, "")
-    if morphs_file == None:
-        txt_content.append(str("Morphs file : " + morphs_name + " doesn't exist"))
-        txt_content.append(str("Stop checking."))
+    if morphs_file is None:
+        txt_content.extend(
+            (
+                str(f"Morphs file : {morphs_name} doesn't exist"),
+                "Stop checking.",
+            )
+        )
     else:
-        txt_content.append("---------------")
-        txt_content.append("Check morph file content :")
+        txt_content.extend(("---------------", "Check morph file content :"))
         # Now we check "relations" key and check if any morphs are missing.
         keys = list(morphs_file.keys())
         perfect = True
         for morph_name in essential_morphs:
-            min = morph_name + "_min"
-            max = morph_name + "_max"
-            if not min in keys:
-                txt_content.append(str("Essential morph not in file : " + min))
+            min = f"{morph_name}_min"
+            max = f"{morph_name}_max"
+            if min not in keys:
+                txt_content.append(str(f"Essential morph not in file : {min}"))
                 perfect = False
-            if not max in keys:
-                txt_content.append(str("Essential morph not in file : " + max))
+            if max not in keys:
+                txt_content.append(str(f"Essential morph not in file : {max}"))
                 perfect = False
         if perfect:
             txt_content.append("All essential morphs are in the file.")

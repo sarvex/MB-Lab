@@ -53,7 +53,7 @@ class Transfor:
 
     def save_transformation(self, filepath, category, minmax):
         export_db = file_ops.load_json_data(filepath, "Create step or finalize transformation file.")
-        if export_db == None:
+        if export_db is None:
             export_db = {}
         #------------------ Variables for the method
         obj = self.humanoid.get_object()
@@ -84,11 +84,11 @@ class Transfor:
                 else:
                     export_db[category].append([key, 0.0, value])
             exists = False
-        #--------Clean data base by deleting all values [name, 0, 0]
-        cleaned_db = []
-        for t_prop in export_db[category]:
-            if t_prop[1] != 0.0 or t_prop[2] != 0.0:
-                cleaned_db.append(t_prop)
+        cleaned_db = [
+            t_prop
+            for t_prop in export_db[category]
+            if t_prop[1] != 0.0 or t_prop[2] != 0.0
+        ]
         export_db[category] = cleaned_db
         if len(export_db[category]) < 1:
             del export_db[category]
@@ -100,13 +100,12 @@ class Transfor:
     def load_transformation(self, filepath, category, minmax):
         self.humanoid.reset_character()
         import_db = file_ops.load_json_data(filepath, "import step transformation file.")
-        #------------------ Create a temp list with all values to change
-        temp_list = {}
-        for t_prop in import_db[category]:
-            if minmax == "MI":
-                temp_list[t_prop[0]] = (t_prop[1] * 0.5) + 0.5
-            else:
-                temp_list[t_prop[0]] = (t_prop[2] * 0.5) + 0.5
+        temp_list = {
+            t_prop[0]: (t_prop[1] * 0.5) + 0.5
+            if minmax == "MI"
+            else (t_prop[2] * 0.5) + 0.5
+            for t_prop in import_db[category]
+        }
         #------------------ Now we put the values in humanoid database.
         for key, item in temp_list.items():
             # Had to do this because sometimes names in standard files are not
@@ -118,12 +117,14 @@ class Transfor:
         
     def check_compatibility_with_current_model(self, filepath):
         data_base = file_ops.load_json_data(filepath, "Read transformation file to check compatibility.")
-        txt = {}
-        txt["About"] = [
-            "Check if some entries in transformation database are not valid.",
-            "Could be a wrong name, an unknown name or a name for another model.",
-            "For the case of trying to use transformations from one model to another",
-            "too many unused morphs may create weird results."]
+        txt = {
+            "About": [
+                "Check if some entries in transformation database are not valid.",
+                "Could be a wrong name, an unknown name or a name for another model.",
+                "For the case of trying to use transformations from one model to another",
+                "too many unused morphs may create weird results.",
+            ]
+        }
         txt_key = ""
         obj = bpy.types.Object
         exists = False
@@ -138,13 +139,12 @@ class Transfor:
                 txt[txt_key] = []
             #--------------------
             for t_prop in data_base[key]:
-                exists = False
-                for m_prop in self.humanoid.character_data.keys():
-                    if t_prop[0] in m_prop:
-                        exists = True
-                        break
+                exists = any(
+                    t_prop[0] in m_prop
+                    for m_prop in self.humanoid.character_data.keys()
+                )
                 if not exists:
-                    txt[txt_key].append(t_prop[0] + " may not be used")
+                    txt[txt_key].append(f"{t_prop[0]} may not be used")
         filepath += ".txt"
         with open(filepath, "w") as j_file:
             json.dump(txt, j_file, indent=2)

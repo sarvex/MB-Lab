@@ -58,20 +58,21 @@ def get_root_directories():
     global root_directories
     if root_directories != None:
         return root_directories
-    rd = []
     fd = [".git", ".github", "__pycache__", "mb-lab_updater"]
     addon_directory = os.path.dirname(os.path.realpath(__file__))
-    for root, dirs, files in os.walk(addon_directory):
-        if root == addon_directory:
-            rd = dirs
-            break
-    root_directories = []
-    for dir in rd:
-        if dir not in fd:
-            root_directories.append(
-                (dir,
-                "MB_Lab" if dir == "data" else dir,
-                dir))
+    rd = next(
+        (
+            dirs
+            for root, dirs, files in os.walk(addon_directory)
+            if root == addon_directory
+        ),
+        [],
+    )
+    root_directories = [
+        (dir, "MB_Lab" if dir == "data" else dir, dir)
+        for dir in rd
+        if dir not in fd
+    ]
     return root_directories
     
 def set_data_path(path):
@@ -100,10 +101,7 @@ def get_configuration():
     # what's why the variable below exists.
     if configuration_done != None:
         return configuration_done
-    data_path = get_data_path()
-    # Here something to change :
-    # Allow to load every file that ends with _config.json
-    if data_path:
+    if data_path := get_data_path():
         configuration_done = {}
         tmp = {}
         for list_dir in os.listdir(data_path):
@@ -113,19 +111,19 @@ def get_configuration():
                 for prop in tmp:
                     if prop == 'data_directory':
                         pass
-                    elif not prop in configuration_done:
+                    elif prop not in configuration_done or prop not in [
+                        "templates_list",
+                        "character_list",
+                    ]:
                         configuration_done[prop] = tmp[prop]
-                    elif prop == "templates_list" or prop == "character_list":
-                        configuration_done[prop] += tmp[prop]
                     else:
-                        configuration_done[prop] = tmp[prop]
+                        configuration_done[prop] += tmp[prop]
         return configuration_done
     logger.critical("Configuration database not found. Please check your Blender addons directory.")
     return None
 
 def get_blendlibrary_path():
-    data_path = get_data_path()
-    if data_path:
+    if data_path := get_data_path():
         return os.path.join(data_path, "humanoid_library.blend")
 
     logger.critical("Models library not found. Please check your Blender addons directory.")
@@ -194,19 +192,16 @@ def load_json_data(json_path, description=None):
 
 def load_vertices_database(vertices_path):
     vertices = []
-    verts = load_json_data(vertices_path, "Vertices data")
-    if verts:
-        for vert_co in verts:
-            vertices.append(mathutils.Vector(vert_co))
+    if verts := load_json_data(vertices_path, "Vertices data"):
+        vertices.extend(mathutils.Vector(vert_co) for vert_co in verts)
     return vertices
 
 
 def set_verts_coords_from_file(obj, vertices_path):
     new_vertices = load_vertices_database(vertices_path)
-    if obj:
-        if len(new_vertices) == len(obj.data.vertices):
-            for i, vert in enumerate(obj.data.vertices):
-                vert.co = new_vertices[i]
+    if obj and len(new_vertices) == len(obj.data.vertices):
+        for i, vert in enumerate(obj.data.vertices):
+            vert.co = new_vertices[i]
 
 
 def generate_items_list(folderpath, file_type="json", with_type = False):
@@ -244,14 +239,12 @@ def import_object_from_lib(lib_filepath, name, final_name=None, stop_import=True
                 logger.warning("Object %s already in the scene. Import stopped", name)
                 return None
 
-            if final_name:
-                if final_name in bpy.data.objects:
-                    logger.warning("Object %s already in the scene. Import stopped", final_name)
-                    return None
+            if final_name and final_name in bpy.data.objects:
+                logger.warning("Object %s already in the scene. Import stopped", final_name)
+                return None
 
         append_object_from_library(lib_filepath, [name])
-        obj = get_object_by_name(name)
-        if obj:
+        if obj := get_object_by_name(name):
             logger.info("Object '%s' imported", name)
             if final_name:
                 obj.name = final_name
@@ -275,11 +268,10 @@ def append_object_from_library(lib_filepath, obj_names, suffix=None):
     except OSError:
         logger.critical("lib %s not found", lib_filepath)
         return
-        
+
     for obj in data_to.objects:
         link_to_collection(obj)
-        obj_parent = utils.get_object_parent(obj)
-        if obj_parent:
+        if obj_parent := utils.get_object_parent(obj):
             link_to_collection(obj_parent)
 
 
@@ -312,18 +304,18 @@ def link_to_collection(obj):
 
     collection_name = 'MB_LAB_Character'
     c = bpy.data.collections.get(collection_name)
-    scene = bpy.context.scene
     # collection is already created
-    if c is not None:
-        if obj.name not in c.objects:
-            c.objects.link(obj)
-        else:
-            logger.warning("The object %s is already linked to the scene", obj.name)
-    else:
+    if c is None:
         # create the collection, link collection to scene and link obj to collection
         c = bpy.data.collections.new(collection_name)
+        scene = bpy.context.scene
         scene.collection.children.link(c)
         c.objects.link(obj)
+
+    elif obj.name not in c.objects:
+        c.objects.link(obj)
+    else:
+        logger.warning("The object %s is already linked to the scene", obj.name)
 
 def is_armature_linked(obj, armat):
     if obj.type == 'MESH':
@@ -337,8 +329,7 @@ def get_object_by_name(name):
 
 
 def select_object_by_name(name):
-    obj = get_object_by_name(name)
-    if obj:
+    if obj := get_object_by_name(name):
         obj.select_set(True)
 
 def get_newest_object(existing_obj_names):
@@ -365,10 +356,12 @@ def get_image(name):
     if name:
         if name in bpy.data.images:
             # Some check for log
-            if bpy.data.images[name].source == "FILE":
-                if os.path.basename(bpy.data.images[name].filepath) != name:
-                    logger.warning("Image named %s is from file: %s",
-                                   name, os.path.basename(bpy.data.images[name].filepath))
+            if (
+                bpy.data.images[name].source == "FILE"
+                and os.path.basename(bpy.data.images[name].filepath) != name
+            ):
+                logger.warning("Image named %s is from file: %s",
+                               name, os.path.basename(bpy.data.images[name].filepath))
             return bpy.data.images[name]
         logger.warning("Getting image failed. Image %s not found in bpy.data.images", name)
         return None
@@ -377,9 +370,8 @@ def get_image(name):
     return None
 
 def save_image(name, filepath, fileformat='PNG'):
-    img = get_image(name)
-    scn = bpy.context.scene
-    if img:
+    if img := get_image(name):
+        scn = bpy.context.scene
         current_format = scn.render.image_settings.file_format
         scn.render.image_settings.file_format = fileformat
         img.save_render(filepath)

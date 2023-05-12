@@ -38,9 +38,7 @@ from . import utils
 
 # create the template for joints base file.
 def create_base_template_file(filepath):
-    file = {}
-    for item in skeleton_ops.ik_joints_head:
-        file[item] = []
+    file = {item: [] for item in skeleton_ops.ik_joints_head}
     for item in skeleton_ops.ik_joints_tail:
         file[item] = []
     for item in skeleton_ops.normal_joints_head:
@@ -78,7 +76,7 @@ def set_current_joints_base_file(joints_base_name):
     global points_index
     tmp = get_set_joints_base_file(joints_base_name)
     if len(current_joints_base_file) < 1:
-        if tmp == None:
+        if tmp is None:
             return
         points_index = 0
         current_joints_base_file[joints_base_name] = tmp
@@ -131,7 +129,7 @@ def create_joints_base_layout(layout):
         same = False
     else:
         for item in filters:
-            if not item in current_filters:
+            if item not in current_filters:
                 same = False
                 break
     if same and len(joints_base_list) > 0:
@@ -153,7 +151,11 @@ def get_points(direction=0):
     global points_index
     global joints_base_list
     obj = bpy.context.object
-    if obj == None or len(current_joints_base_file) < 1 or len(joints_base_list) < 1:
+    if (
+        obj is None
+        or len(current_joints_base_file) < 1
+        or len(joints_base_list) < 1
+    ):
         return None
     tmp = list(current_joints_base_file.keys())
     file_name = tmp[0]
@@ -175,7 +177,7 @@ def get_points(direction=0):
     """if mh == None: # Because obj == None
         return None"""
     hist = mh.get_mesh_history(joints_name)
-    if hist == None:
+    if hist is None:
         hist = mh.create_mesh_history(joints_name)
         # The history is created, so we copy values from file
         file_points_value = current_joints_base_file[file_name][joints_name]
@@ -185,8 +187,8 @@ def get_points(direction=0):
 
 def get_mesh_handling(file_name, obj=None):
     global mesh_handling_dict
-    if not file_name in mesh_handling_dict:
-        if obj == None:
+    if file_name not in mesh_handling_dict:
+        if obj is None:
             return None
         mesh_handling_dict[file_name] = mesh_ops.MeshHandling(file_name, obj)
     return mesh_handling_dict[file_name]
@@ -227,19 +229,15 @@ current_joint_central_point = None
 def show_central_point(hist):
     global current_joints_base_file
     global current_joint_central_point
-    if hist == None or not hist.has_elements():
+    if hist is None or not hist.has_elements():
         return
     indices = hist.get_history()
-    # We check all points in the obj of hist
-    vertices = []
     obj = hist.object
     bm = bmesh.from_edit_mesh(obj.data)
-    for vert in bm.verts:
-        if vert.index in indices:
-            vertices.append(vert.co)
+    vertices = [vert.co for vert in bm.verts if vert.index in indices]
     # Now we have all vertices, we compute the average center
     central_point = algorithms.average_center(vertices)
-    if current_joint_central_point == None:
+    if current_joint_central_point is None:
         mesh = bpy.data.meshes.new('Basic_Sphere')
         current_joint_central_point = bpy.data.objects.new("Joint center", mesh)
         bm = bmesh.new()
@@ -260,9 +258,7 @@ recover_the_offset_point = []
 
 # create the template for joints base file.
 def create_offset_template_file(filepath):
-    file = {}
-    for item in skeleton_ops.ik_joints_head:
-        file[item] = [0, 0, 0]
+    file = {item: [0, 0, 0] for item in skeleton_ops.ik_joints_head}
     for item in skeleton_ops.ik_joints_tail:
         file[item] = [0, 0, 0]
     with open(filepath, "w") as j_file:
@@ -272,7 +268,7 @@ def set_current_joints_offset_file(joints_offset_name):
     global current_joints_offset_file
     tmp = get_set_joints_offset_file(joints_offset_name)
     if len(current_joints_offset_file) < 1:
-        if tmp == None:
+        if tmp is None:
             return
         current_joints_offset_file[joints_offset_name] = tmp
         return
@@ -317,14 +313,14 @@ def create_offset_and_set_to_center():
     global current_joint_central_point
     global current_joints_offset_file
     hist = get_points()
-    if hist == None or current_joint_central_point == None:
+    if hist is None or current_joint_central_point is None:
         return
-    if current_offset_point == None:
+    if current_offset_point is None:
         create_offset_point()
     vect = current_joint_central_point.location
     current_offset_point.location = (vect.x, vect.y, vect.z)
     recover_the_offset_point = [0, 0, 0]
-    current_offset_point.hide_viewport = False    
+    current_offset_point.hide_viewport = False
     file = None
     # We put the new entry in file
     for key, item in current_joints_offset_file.items():
@@ -336,14 +332,14 @@ def show_offset_point(hist):
     global current_joints_offset_file
     global current_joint_central_point
     global recover_the_offset_point
-    if hist == None or len(current_joints_offset_file) < 1:
+    if hist is None or len(current_joints_offset_file) < 1:
         return
     # Now we search in the offset file.
     file = None
     for key, item in current_joints_offset_file.items():
         file = item
     if hist.name in file:
-        if current_offset_point == None:
+        if current_offset_point is None:
             create_offset_point()
         co = file[hist.name]
         vect = current_joint_central_point.location
@@ -365,7 +361,7 @@ def delete_offset_point():
     global current_offset_point
     global current_joints_offset_file
     hist = get_points()
-    if hist == None or len(current_joints_offset_file) < 1:
+    if hist is None or len(current_joints_offset_file) < 1:
         return
     # Now we search in the offset file.
     file = None
@@ -379,10 +375,10 @@ def recover_offset_point():
     global current_offset_point
     global current_joints_offset_file
     global recover_the_offset_point
-    if current_offset_point == None:
+    if current_offset_point is None:
         return
     hist = get_points()
-    if hist == None or len(current_joints_offset_file) < 1:
+    if hist is None or len(current_joints_offset_file) < 1:
         return
     # Now we search in the offset file.
     file = None
@@ -400,7 +396,7 @@ def set_offset_point():
     global current_joints_offset_file
     global current_joint_central_point
     hist = get_points()
-    if hist == None or len(current_joints_offset_file) < 1:
+    if hist is None or len(current_joints_offset_file) < 1:
         return
     # Now we search in the offset file.
     file = None

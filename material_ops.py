@@ -58,8 +58,7 @@ def get_material_nodes(material):
 
 def get_material_node(material_name, node_name):
     material_node = None
-    material = get_material(material_name)
-    if material:
+    if material := get_material(material_name):
         if node_name in material.node_tree.nodes:
             material_node = material.node_tree.nodes[node_name]
     if not material_node:
@@ -89,6 +88,4 @@ def set_node_output_value(node, index, value):
         logger.warning("Socket[%s] not in range of node %s outputs", index, node.name)
 
 def get_object_materials(obj):
-    if obj.data.materials:
-        return obj.data.materials
-    return []
+    return obj.data.materials if obj.data.materials else []

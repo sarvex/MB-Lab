@@ -28,9 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_object_parent(obj):
-    if not obj:
-        return None
-    return getattr(obj, "parent", None)
+    return None if not obj else getattr(obj, "parent", None)
 
 
 def get_deforming_armature(obj):
@@ -51,10 +49,8 @@ def get_active_armature():
             if parent_object:
                 if parent_object.type == 'ARMATURE':
                     return parent_object
-            else:
-                deforming_armature = get_deforming_armature(active_obj)
-                if deforming_armature:
-                    return deforming_armature
+            elif deforming_armature := get_deforming_armature(active_obj):
+                return deforming_armature
     return None
 
 
@@ -65,7 +61,7 @@ def is_ik_armature(armature=None):
         for b in armature.data.bones:
             if 'IK' in b.name:
                 return True
-    elif armature and armature.type != 'ARMATURE':
+    elif armature:
         logger.warning("Cannot get the bones because the obj is not an armature")
         return False
     return False
@@ -91,19 +87,13 @@ def check_version(m_vers, min_version=(1, 5, 0)):
 # In a list of strings, return every str that has contains[] in it.
 def sort_str_content(str_list, contains=[], constraint_and=False):
     if len(contains) < 1:
-        if constraint_and:
-            return str_list
-        else:
-            return []
-    return_list = []
+        return str_list if constraint_and else []
     content = contains[0]
-    for item in str_list:
-        if content in item:
-            return_list.append(item)
+    return_list = [item for item in str_list if content in item]
     if constraint_and:
         return sort_str_content(return_list, contains[1:], True)
     under_list = sort_str_content(str_list, contains[1:], False)
     for item in under_list:
-        if not item in return_list:
+        if item not in return_list:
             return_list.append(item)
     return return_list

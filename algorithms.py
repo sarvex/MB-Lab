@@ -49,12 +49,10 @@ DEBUG_LEVEL = 3
 def print_log_report(level, text_to_write):
     import warnings
     warnings.warn("print_log_report deprecated, use python logging", DeprecationWarning)
-    l = 0
     levels = {"INFO": 0, "DEBUG": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4,}
-    if level in levels:
-        l = levels[level]
+    l = levels.get(level, 0)
     if l >= DEBUG_LEVEL:
-        print(level + ": " + text_to_write)
+        print(f"{level}: {text_to_write}")
 
 
 # ------------------------------------------------------------------------
@@ -74,10 +72,7 @@ def full_dist(vert1, vert2, axis="ALL"):
         return v3.length
     if axis == "X":
         return abs(v1[0]-v2[0])
-    if axis == "Y":
-        return abs(v1[1]-v2[1])
-    # if axis == "Z":
-    return abs(v1[2]-v2[2])
+    return abs(v1[1]-v2[1]) if axis == "Y" else abs(v1[2]-v2[2])
 
 
 def length_of_strip(vertices_coords, indices, axis="ALL"):
@@ -90,15 +85,12 @@ def length_of_strip(vertices_coords, indices, axis="ALL"):
 
 
 def closest_point_on_triangle(point, tri_p1, tri_p2, tri_p3):
-    # TODO: Added in 2.82 - simplify once released.
-    builtin = getattr(mathutils.geometry, 'closest_point_on_tri', None)
-
-    if builtin:
+    if builtin := getattr(mathutils.geometry, 'closest_point_on_tri', None):
         return builtin(point, tri_p1, tri_p2, tri_p3)
 
-    hit_point = mathutils.geometry.intersect_point_tri(point, tri_p1, tri_p2, tri_p3)
-
-    if hit_point:
+    if hit_point := mathutils.geometry.intersect_point_tri(
+        point, tri_p1, tri_p2, tri_p3
+    ):
         return hit_point
 
     line_points = [
@@ -160,14 +152,10 @@ def get_bounding_box(v_coords):
 
 def load_bbox_data(filepath):
     bboxes = []
-    database_file = open(filepath, "r")
-    for line in database_file:
-        bboxes.append(line.split())
-    database_file.close()
-
-    bbox_data_dict = {}
-    for x_data in bboxes:
-        bbox_data_dict[x_data[0]] = [
+    with open(filepath, "r") as database_file:
+        bboxes.extend(line.split() for line in database_file)
+    return {
+        x_data[0]: [
             int(x_data[1]),
             int(x_data[2]),
             int(x_data[3]),
@@ -175,27 +163,23 @@ def load_bbox_data(filepath):
             int(x_data[5]),
             int(x_data[6]),
         ]
-    return bbox_data_dict
+        for x_data in bboxes
+    }
 
 
 def smart_combo(prefix, morph_values):
 
     tags = []
-    names = []
-    weights = []
     max_morph_values = []
 
     # Compute the combinations and get the max values
     for v_data in morph_values:
         tags.append(["max", "min"])
         max_morph_values.append(max(v_data))
-    for n_data in itertools.product(*tags):
-        names.append(prefix+"_"+'-'.join(n_data))
-
-    # Compute the weight of each combination
-    for n_data in itertools.product(*morph_values):
-        weights.append(sum(n_data))
-
+    names = [
+        f"{prefix}_" + '-'.join(n_data) for n_data in itertools.product(*tags)
+    ]
+    weights = [sum(n_data) for n_data in itertools.product(*morph_values)]
     factor = max(max_morph_values)
     best_val = max(weights)
     toll = 1.5
@@ -219,30 +203,23 @@ def smart_combo(prefix, morph_values):
 
 
 def is_excluded(property_name, excluded_properties):
-    for excluded_property in excluded_properties:
-        if excluded_property in property_name:
-            return True
-    return False
+    return any(
+        excluded_property in property_name
+        for excluded_property in excluded_properties
+    )
 
 # Improved random fix
 def generate_parameter(val, random_value, preserve_phenotype=False):
     r = random.random()
     if preserve_phenotype:
         if val > 0.5:
-            if val > 0.8:
-                new_value = 0.8 + 0.2*r
-            else:
-                new_value = 0.5+r*random_value
+            new_value = 0.8 + 0.2*r if val > 0.8 else 0.5+r*random_value
         else:
-            if val < 0.2:
-                new_value = 0.2*r
-            else:
-                new_value = 0.5-r*random_value
+            new_value = 0.2*r if val < 0.2 else 0.5-r*random_value
+    elif r > 0.5:
+        new_value = min(1.0, 0.5+random.random()*random_value)
     else:
-        if r > 0.5:
-            new_value = min(1.0, 0.5+random.random()*random_value)
-        else:
-            new_value = max(0.0, 0.5-random.random()*random_value)
+        new_value = max(0.0, 0.5-random.random()*random_value)
     return new_value
 
 
@@ -295,11 +272,8 @@ def correct_morph(base_form, current_form, morph_deltas, bboxes):
 
         if str(idx) in bboxes:
             indices = bboxes[str(idx)]
-            current_bounding_box = bounding_box(current_form, indices)
-            if current_bounding_box:
-                base_bounding_box = bounding_box(base_form, indices)
-                if base_bounding_box:
-
+            if current_bounding_box := bounding_box(current_form, indices):
+                if base_bounding_box := bounding_box(base_form, indices):
                     if base_bounding_box[0] != 0:
                         scale_x = current_bounding_box[0]/base_bounding_box[0]
                     else:
@@ -344,12 +318,14 @@ def looking_for_humanoid_obj():
     human_obj = None
     name = ""
     for obj in bpy.data.objects:
-        if obj.type == "MESH":
-            if "manuellab_vers" in get_object_keys(obj):
-                if utils.check_version(obj["manuellab_vers"]):
-                    human_obj = obj
-                    name = human_obj.name
-                    break
+        if (
+            obj.type == "MESH"
+            and "manuellab_vers" in get_object_keys(obj)
+            and utils.check_version(obj["manuellab_vers"])
+        ):
+            human_obj = obj
+            name = human_obj.name
+            break
 
     if not human_obj:
         msg = "No lab humanoids in the scene"
@@ -406,8 +382,7 @@ def get_selected_objs_names():
 
 
 def select_object_by_name(name):
-    obj = get_object_by_name(name)
-    if obj:
+    if obj := get_object_by_name(name):
         obj.select_set(True)
 
 
@@ -444,11 +419,11 @@ def is_mesh(obj):
 
 
 def get_objects_selected_names():
-    selected_objects = []
-    for obj in bpy.context.selected_objects:
-        if hasattr(obj, 'name'):
-            selected_objects.append(obj.name)
-    return selected_objects
+    return [
+        obj.name
+        for obj in bpy.context.selected_objects
+        if hasattr(obj, 'name')
+    ]
 
 
 def apply_object_transformation(obj):
@@ -472,8 +447,7 @@ def apply_object_transformation(obj):
 def collect_existing_objects():
     existing_obj_names = []
     for obj in bpy.data.objects:
-        name = obj.name
-        if name:
+        if name := obj.name:
             existing_obj_names.append(name)
     return existing_obj_names
 
@@ -488,8 +462,7 @@ def get_newest_object(existing_obj_names):
 
 def get_selected_gender():
     obj = get_active_body()
-    template = get_template_model(obj)
-    if template:
+    if template := get_template_model(obj):
         if "_female" in template:
             return "FEMALE"
         if "_male" in template:
@@ -498,18 +471,17 @@ def get_selected_gender():
 
 
 def identify_template(obj):
-    if obj:
-        if obj.type == 'MESH':
-            verts = obj.data.vertices
-            polygons = obj.data.polygons
-            config_data = file_ops.get_configuration()
+    if obj and obj.type == 'MESH':
+        verts = obj.data.vertices
+        polygons = obj.data.polygons
             # TODO error messages
-            if verts and polygons:
-                for template in config_data["templates_list"]:
-                    n_verts2 = config_data[template]["vertices"]
-                    n_polygons2 = config_data[template]["faces"]
-                    if n_verts2 == len(verts) and n_polygons2 == len(polygons):
-                        return template
+        if verts and polygons:
+            config_data = file_ops.get_configuration()
+            for template in config_data["templates_list"]:
+                n_verts2 = config_data[template]["vertices"]
+                n_polygons2 = config_data[template]["faces"]
+                if n_verts2 == len(verts) and n_polygons2 == len(polygons):
+                    return template
     return None
 
 
@@ -536,17 +508,13 @@ def get_polygon_vertices_coords(obj_data, index):
 def get_template_model(obj):
     template = identify_template(obj)
     config_data = file_ops.get_configuration()
-    if template:
-        return config_data[template]["template_model"]
-    return None
+    return config_data[template]["template_model"] if template else None
 
 
 def get_template_polygons(obj):
     template = identify_template(obj)
     config_data = file_ops.get_configuration()
-    if template:
-        return config_data[template]["template_polygons"]
-    return None
+    return config_data[template]["template_polygons"] if template else None
 
 
 def is_a_lab_character(obj):
@@ -554,14 +522,12 @@ def is_a_lab_character(obj):
 
 
 def get_active_body():
-    obj = get_active_object()
-    if obj:
+    if obj := get_active_object():
         if obj.type == 'MESH':
             return obj
         if obj.type == 'ARMATURE' and obj.children:
             for c_obj in obj.children:
-                obj_id = get_template_model(c_obj)
-                if obj_id:
+                if obj_id := get_template_model(c_obj):
                     return c_obj
     return None
 
@@ -583,8 +549,7 @@ def raw_mesh_from_object(obj, apply_modifiers=False):
 def get_all_bones_z_axis(armature):
     armature_z_axis = {}
     select_and_change_mode(armature, 'EDIT')
-    source_edit_bones = get_edit_bones(armature)
-    if source_edit_bones:
+    if source_edit_bones := get_edit_bones(armature):
         for e_bone in source_edit_bones:
             armature_z_axis[e_bone.name] = e_bone.z_axis.copy()
     select_and_change_mode(armature, 'OBJECT')
@@ -604,15 +569,11 @@ def reset_bone_rot(p_bone):
 def import_mesh_from_lib(lib_filepath, name):
     existing_mesh_names = collect_existing_meshes()
     file_ops.append_mesh_from_library(lib_filepath, [name])
-    new_mesh = get_newest_mesh(existing_mesh_names)
-    return new_mesh
+    return get_newest_mesh(existing_mesh_names)
 
 
 def collect_existing_meshes():
-    existing_mesh_names = []
-    for mesh in bpy.data.meshes:
-        existing_mesh_names.append(mesh.name)
-    return existing_mesh_names
+    return [mesh.name for mesh in bpy.data.meshes]
 
 
 def get_mesh(name):
@@ -620,10 +581,14 @@ def get_mesh(name):
 
 
 def get_newest_mesh(existing_mesh_names):
-    for mesh in bpy.data.meshes:
-        if mesh.name not in existing_mesh_names:
-            return get_mesh(mesh.name)
-    return None
+    return next(
+        (
+            get_mesh(mesh.name)
+            for mesh in bpy.data.meshes
+            if mesh.name not in existing_mesh_names
+        ),
+        None,
+    )
 
 
 def new_shapekey(obj, shapekey_name, slider_min=0, slider_max=1.0, value=1.0):
@@ -654,9 +619,7 @@ def reset_shapekeys(obj):
 
 
 def get_object_keys(obj):
-    if obj:
-        return obj.keys()
-    return None
+    return obj.keys() if obj else None
 
 
 def get_vertgroup_verts(obj, vgroup_name):
@@ -708,8 +671,7 @@ def get_pose_bones(armature):
 
 
 def get_edit_bone(armature, name):
-    edit_bones = get_edit_bones(armature)
-    if edit_bones:
+    if edit_bones := get_edit_bones(armature):
         if name in edit_bones:
             return edit_bones[name]
     return None
@@ -721,9 +683,7 @@ def set_bone_rotation(bone, value, mode='QUATERNION'):
 
 
 def get_bone_rotation(bone, mode='QUATERNION'):
-    if mode == 'QUATERNION':
-        return bone.rotation_quaternion
-    return None
+    return bone.rotation_quaternion if mode == 'QUATERNION' else None
 
 
 def has_anime_shapekeys(obj):
@@ -759,10 +719,14 @@ def get_rest_lengths(armat):
 
 
 def get_bone_constraint_by_type(bone, constraint_type):
-    for constraint in bone.constraints:
-        if constraint.type == constraint_type:
-            return constraint
-    return None
+    return next(
+        (
+            constraint
+            for constraint in bone.constraints
+            if constraint.type == constraint_type
+        ),
+        None,
+    )
 
 
 def set_bone_constraint_parameter(constraint, parameter, value):
@@ -785,8 +749,7 @@ def remove_vertgroups_all(obj):
 
 
 def remove_vertgroup(obj, group_name):
-    vertgroup = get_vertgroup_by_name(obj, group_name)
-    if vertgroup:
+    if vertgroup := get_vertgroup_by_name(obj, group_name):
         obj.vertex_groups.remove(vertgroup)
 
 
@@ -796,22 +759,19 @@ def new_vertgroup(obj, group_name):
 
 
 def get_shapekey_reference(obj):
-    if has_shapekeys(obj):
-        return obj.data.shape_keys.reference_key
-    return None
+    return obj.data.shape_keys.reference_key if has_shapekeys(obj) else None
 
 
 def get_shapekey(obj, shapekey_name):
-    shapekey_data = None
-    if has_shapekeys(obj):
-        if shapekey_name in get_shapekeys_names(obj):
-            shapekey_data = obj.data.shape_keys.key_blocks[shapekey_name]
-    return shapekey_data
+    return (
+        obj.data.shape_keys.key_blocks[shapekey_name]
+        if has_shapekeys(obj) and shapekey_name in get_shapekeys_names(obj)
+        else None
+    )
 
 
 def remove_shapekey(obj, shapekey_name):
-    shapekey_to_remove = get_shapekey(obj, shapekey_name)
-    if shapekey_to_remove:
+    if shapekey_to_remove := get_shapekey(obj, shapekey_name):
         obj.shape_key_remove(shapekey_to_remove)
 
 
@@ -827,8 +787,7 @@ def remove_shapekeys_all(obj):
 def get_shapekeys_names(obj):
     shapekeys_names = []
     if has_shapekeys(obj):
-        for sk in obj.data.shape_keys.key_blocks:
-            shapekeys_names.append(sk.name)
+        shapekeys_names.extend(sk.name for sk in obj.data.shape_keys.key_blocks)
     return shapekeys_names
 
 
@@ -837,11 +796,12 @@ def has_shapekeys(obj):
 
 
 def get_stretch_to_targets(armat):
-    mapping = dict()
+    mapping = {}
     if armat:
         for p_bone in get_pose_bones(armat):
-            stretch_to_constraint = get_bone_constraint_by_type(p_bone, 'STRETCH_TO')
-            if stretch_to_constraint:
+            if stretch_to_constraint := get_bone_constraint_by_type(
+                p_bone, 'STRETCH_TO'
+            ):
                 mapping[p_bone.name] = stretch_to_constraint.subtarget
     return mapping
 
@@ -871,45 +831,43 @@ def update_bendy_bones(armat):
 
 
 def apply_auto_align_bones(armat):
-    align_table = {
-        "upperarm_twist_L": "upperarm_L",
-        "upperarm_twist_R": "upperarm_R",
-        "lowerarm_twist_L": "lowerarm_L",
-        "lowerarm_twist_R": "lowerarm_R",
-        "thigh_twist_L": "thigh_L",
-        "thigh_twist_R": "thigh_R",
-        "calf_twist_L": "calf_L",
-        "calf_twist_R": "calf_R",
-        "rot_helper01_L": "calf_L",
-        "rot_helper01_R": "calf_R",
-        "rot_helper02_L": "lowerarm_L",
-        "rot_helper02_R": "lowerarm_R",
-        "rot_helper03_L": "thigh_L",
-        "rot_helper03_R": "thigh_R",
-        "rot_helper04_L": "foot_L",
-        "rot_helper04_R": "foot_R",
-        "rot_helper06_L": "thigh_L",
-        "rot_helper06_R": "thigh_R",
-    }
-
     if armat:
         select_and_change_mode(armat, "EDIT")
         edit_bones = get_edit_bones(armat)
+        align_table = {
+            "upperarm_twist_L": "upperarm_L",
+            "upperarm_twist_R": "upperarm_R",
+            "lowerarm_twist_L": "lowerarm_L",
+            "lowerarm_twist_R": "lowerarm_R",
+            "thigh_twist_L": "thigh_L",
+            "thigh_twist_R": "thigh_R",
+            "calf_twist_L": "calf_L",
+            "calf_twist_R": "calf_R",
+            "rot_helper01_L": "calf_L",
+            "rot_helper01_R": "calf_R",
+            "rot_helper02_L": "lowerarm_L",
+            "rot_helper02_R": "lowerarm_R",
+            "rot_helper03_L": "thigh_L",
+            "rot_helper03_R": "thigh_R",
+            "rot_helper04_L": "foot_L",
+            "rot_helper04_R": "foot_R",
+            "rot_helper06_L": "thigh_L",
+            "rot_helper06_R": "thigh_R",
+        }
+
         for name, target_name in align_table.items():
-            bone = edit_bones.get(name)
-            if bone:
+            if bone := edit_bones.get(name):
                 bone_target = edit_bones[target_name]
                 bone.tail = bone.head + bone_target.vector.normalized() * bone.length
                 bone.roll = bone_target.roll
 
 
 def has_deformation_vgroups(obj, armat):
-    if obj.type == 'MESH':
-        if armat:
-            for vgroup in obj.vertex_groups:
-                for b in armat.data.bones:
-                    if b.name == vgroup.name:
-                        return True
+    if obj.type == 'MESH' and armat:
+        for vgroup in obj.vertex_groups:
+            for b in armat.data.bones:
+                if b.name == vgroup.name:
+                    return True
     return False
 
 
@@ -970,11 +928,7 @@ def set_scene_modifiers_status(visib, status_data=None):
 def disable_object_modifiers(obj, types_to_disable=[]):
     for modfr in obj.modifiers:
         modifier_type = modfr.type
-        if modifier_type in types_to_disable:
-            set_modifier_viewport(modfr, False)
-            logger.info("Modifier %s of %s can create unpredictable fitting results. MB-Lab has disabled it",
-                        modifier_type, obj.name)
-        elif types_to_disable == []:
+        if modifier_type in types_to_disable or types_to_disable == []:
             set_modifier_viewport(modfr, False)
             logger.info("Modifier %s of %s can create unpredictable fitting results. MB-Lab has disabled it",
                         modifier_type, obj.name)
@@ -1074,35 +1028,35 @@ def apply_modifier(obj, modifier):
 def move_up_modifier(obj, modifier):
     modifier_name = get_modifier_name(modifier)
     set_active_object(obj)
-    for n in range(len(obj.modifiers)):
+    for _ in range(len(obj.modifiers)):
         bpy.ops.object.modifier_move_up(modifier=modifier_name)
 
 #
 def move_down_modifier(obj, modifier):
     modifier_name = get_modifier_name(modifier)
     set_active_object(obj)
-    for n in range(len(obj.modifiers)):
+    for _ in range(len(obj.modifiers)):
         bpy.ops.object.modifier_move_down(modifier=modifier_name)
 
 def swap_material(old_mat_name, new_mat_name, char_name):
 
     #Get Object if it doesn't exist return none
     obj = bpy.data.objects[char_name]
-    if obj == None:
+    if obj is None:
         return None
-        
+
     #Try and get materials if either does not exist return None
-    
+
     try:
 
         mat_old = bpy.data.materials[old_mat_name]
         mat_new = bpy.data.materials[new_mat_name]
-    
+
     except:
         logger.debug("Material not found")
         return None
-    
-    
+
+
     #Assign new material to old material slot
     materialslen = len(obj.data.materials)
     for i in range(0,materialslen):
@@ -1138,7 +1092,7 @@ def remove_censors():
 # we use things like bpy.types.scene.whatever.
 def get_enum_property_item(key, enum_property, index=1, split_first_part=False):
     value = None
-    if enum_property == None or len(enum_property) < 1:
+    if enum_property is None or len(enum_property) < 1:
         enum_property = ('NONE', 'CHOOSE', 'Choose one')
     for ind in range(len(enum_property)):
         if key in enum_property[ind]:
@@ -1151,15 +1105,12 @@ def get_enum_property_item(key, enum_property, index=1, split_first_part=False):
 
 #create an enumProperty list of tuples, from a list.
 def create_enum_property_items(values=[], key_length=3, tip_length=4):
-    if values == None or len(values) < 1:
+    if values is None or len(values) < 1:
         return [("0", "NONE", "")]
-    return_list = []
-    for i in range(len(values)):
-        return_list.append(
-            (str(i).zfill(key_length),
-            values[i],
-            str(values[i])[0:tip_length]))
-    return return_list
+    return [
+        (str(i).zfill(key_length), values[i], str(values[i])[:tip_length])
+        for i in range(len(values))
+    ]
     
 def split_name(name, splitting_char=' -_²&=¨^$£%µ,?;!§+*/:[]\"\'{}', indexes=[]):
     if len(splitting_char) < 1:
@@ -1183,8 +1134,6 @@ def split(name, splitting_char=' -_²&=¨^$£%µ,?;!§+*/:[]\"\'{}'):
         name = [name]
     for txt in name:
         tmp = txt.split(splitting_char[0])
-        for t in tmp:
-            if len(t) > 0:
-                return_list.append(t)
+        return_list.extend(t for t in tmp if len(t) > 0)
     return split(return_list, splitting_char[1:])
         

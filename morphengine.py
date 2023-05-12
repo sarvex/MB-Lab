@@ -53,7 +53,7 @@ class MorphingEngine:
         self.final_form = []
         self.cache_form = []
         self.obj_name = obj_name
-        
+
         self.vertices_filename = character_config["name"]+"_verts.json"
         self.expressions_filename = character_config["name"]+"_exprs.json"
         self.morphs_filename = character_config["name"]+"_morphs.json"
@@ -113,9 +113,10 @@ class MorphingEngine:
             self.vertices_filename)
 
 
-        if os.path.isdir(self.bodies_data_path):
-            if os.path.isfile(self.measures_data_path):
-                self.measures_database_exist = True
+        if os.path.isdir(self.bodies_data_path) and os.path.isfile(
+            self.measures_data_path
+        ):
+            self.measures_database_exist = True
 
         self.verts_to_update = set()
         self.morph_data = {}
@@ -166,8 +167,7 @@ class MorphingEngine:
     def init_final_form(self):
         obj = self.get_object()
         self.final_form = []
-        for vert in obj.data.vertices:
-                self.final_form.append(vert.co.copy())
+        self.final_form.extend(vert.co.copy() for vert in obj.data.vertices)
 
     def __repr__(self):
         return "MorphEngine {0} with {1} morphings".format(self.obj_name, len(self.morph_data))
@@ -189,8 +189,7 @@ class MorphingEngine:
             self.update(update_all_verts=True)
 
     def load_measures_database(self, measures_path):
-        m_database = file_ops.load_json_data(measures_path,"Measures data")
-        if m_database:
+        if m_database := file_ops.load_json_data(measures_path, "Measures data"):
             self.measures_data = m_database["measures"]
             self.measures_relat_data = m_database["relations"]
             self.measures_score_weights = m_database["score_weights"]
@@ -202,8 +201,7 @@ class MorphingEngine:
 
     def load_morphs_database(self, morph_data_path):
         time1 = time.time()
-        m_data = file_ops.load_json_data(morph_data_path,"Morph data")
-        if m_data:
+        if m_data := file_ops.load_json_data(morph_data_path, "Morph data"):
             for morph_name, deltas in m_data.items():
                 morph_deltas = []
                 modified_verts = set()
@@ -238,7 +236,6 @@ class MorphingEngine:
 
         if not vert_coords:
             vert_coords = self.final_form
-        measures = {}
         time1 = time.time()
         if measure_name:
             if measure_name in self.measures_data:
@@ -246,8 +243,10 @@ class MorphingEngine:
                 axis = measure_name[-1]
                 return algorithms.length_of_strip(vert_coords, indices, axis) #check algorithms.py
         else:
-            for measure_name in self.measures_data.keys():
-                measures[measure_name] = self.calculate_measures(measure_name, vert_coords)
+            measures = {
+                measure_name: self.calculate_measures(measure_name, vert_coords)
+                for measure_name in self.measures_data.keys()
+            }
             logger.debug("Measures calculated in {0} secs".format(time.time()-time1))
             return measures
 
@@ -312,12 +311,9 @@ class MorphingEngine:
         for morph_name, morph_deltas in self.morph_data.items():
             for name in names:
                 if name in morph_name: #If the morph is in the list of morph to correct
-                    if morph_name in self.morph_data_cache:
-                        morph_deltas_to_recalculate = self.morph_data_cache[morph_name]
-                    else:
+                    if morph_name not in self.morph_data_cache:
                         self.morph_data_cache[morph_name] = morph_deltas
-                        morph_deltas_to_recalculate = self.morph_data_cache[morph_name]
-
+                    morph_deltas_to_recalculate = self.morph_data_cache[morph_name]
                     self.morph_data[morph_name] = algorithms.correct_morph(
                         self.base_form,
                         self.final_form,
@@ -348,17 +344,14 @@ class MorphingEngine:
 
         #Store the character in neutral expression
         obj = self.get_object()
-        stored_vertices = []
-        for vert in obj.data.vertices:
-            stored_vertices.append(mathutils.Vector(vert.co))
-
+        stored_vertices = [mathutils.Vector(vert.co) for vert in obj.data.vertices]
         logger.info("Storing neutral character...OK")
         counter = 0
         for morph_name in sorted(self.morph_data.keys()):
             if "Expression" in morph_name:
                 counter += 1
                 self.calculate_morph(morph_name, 1.0)
-                logger.info("Converting {} to shapekey".format(morph_name))
+                logger.info(f"Converting {morph_name} to shapekey")
                 self.update(update_all_verts=True)
                 new_sk = algorithms.new_shapekey_from_current_vertices(obj, morph_name)
                 new_sk.value = 0

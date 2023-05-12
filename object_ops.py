@@ -70,7 +70,7 @@ def get_sel():
     #New indexes
     v_count = len(vidx[selv])
     f_count = len(fidx[selfa])
-    new_idx = [i for i in range(v_count)]
+    new_idx = list(range(v_count))
     nv_Dict = {o: n for n, o in enumerate(vidx[selv].tolist())}
     new_f = [[nv_Dict[i] for i in nest] for nest in fac[selfa]]
     return dc([co[selv], new_f, nv_Dict])
@@ -133,8 +133,7 @@ def capsule_data(length, radius, cap_coord):
     sc[1][1] = radius
     sc[2][2] = length/4
     coord = np.array([[i[0], i[1], i[2] + 2] for i in cap_coord])
-    nc = coord @ sc
-    return nc
+    return coord @ sc
 
 def add_rd_capsule(Name, length, radius, cap_coord, faces, collection):
     cor = capsule_data(length, radius, cap_coord)
@@ -149,18 +148,28 @@ def add_rd_capsule(Name, length, radius, cap_coord, faces, collection):
 
 #Rotation Matrix
 def rotation_matrix(xrot, yrot, zrot):
-    rot_mat = np.array([
-        [np.cos(zrot)*np.cos(yrot), -np.sin(zrot)*np.cos(xrot) + np.cos(zrot)*np.sin(yrot)*np.sin(xrot), np.sin(zrot)*np.sin(xrot) + np.cos(zrot)*np.sin(yrot)*np.cos(xrot)],
-        [-np.sin(yrot), np.cos(yrot)*np.sin(xrot), np.cos(yrot)*np.cos(xrot)]
-        ])
-    return rot_mat
+    return np.array(
+        [
+            [
+                np.cos(zrot) * np.cos(yrot),
+                -np.sin(zrot) * np.cos(xrot)
+                + np.cos(zrot) * np.sin(yrot) * np.sin(xrot),
+                np.sin(zrot) * np.sin(xrot)
+                + np.cos(zrot) * np.sin(yrot) * np.cos(xrot),
+            ],
+            [
+                -np.sin(yrot),
+                np.cos(yrot) * np.sin(xrot),
+                np.cos(yrot) * np.cos(xrot),
+            ],
+        ]
+    )
 
 
 #Rotation Matrix X 90 degrees
 def rot_mat_x_90(List):
     rmx90 = rotation_matrix(radians(90), 0, 0)
-    new_co = [i @ rmx90 for i in List]
-    return new_co
+    return [i @ rmx90 for i in List]
 
 def rot_obj(obj, rot_mat):
     vt = obj.data.vertices
@@ -252,10 +261,10 @@ def adoption(parent, child, type, index):
     ch.parent = par
     ch.matrix_world = par.matrix_world @ par.matrix_world.inverted()
     ch.parent_type = type
-    if type == 'VERTEX':
-        ch.parent_vertices[0] = index
     if type == 'BONE':
         ch.parent_bone = index
+    elif type == 'VERTEX':
+        ch.parent_vertices[0] = index
 
 def add_parent(parent, children):
     active_ob(parent, children)
@@ -315,30 +324,21 @@ def remove_mesh(mesh, remove_materials=False):
 
 def remove_object(obj, delete_mesh=False, delete_materials=False):
     if obj:
-        mesh_to_remove = None
-        if obj.type == 'MESH':
-            mesh_to_remove = obj.data
-
+        mesh_to_remove = obj.data if obj.type == 'MESH' else None
         bpy.data.objects.remove(obj, do_unlink=True)
-        if delete_mesh:
-            if mesh_to_remove is not None:
-                remove_mesh(mesh_to_remove, delete_materials)
+        if delete_mesh and mesh_to_remove is not None:
+            remove_mesh(mesh_to_remove, delete_materials)
 
 def set_object_layer(obj, n):
-    if obj:
-        if hasattr(obj, 'layers'):
-            n_layer = len(obj.layers)
-            for i in range(n_layer):
-                obj.layers[i] = False
-            if n in range(n_layer):
-                obj.layers[n] = True
+    if obj and hasattr(obj, 'layers'):
+        n_layer = len(obj.layers)
+        for i in range(n_layer):
+            obj.layers[i] = False
+        if n in range(n_layer):
+            obj.layers[n] = True
 
 def apply_object_matrix(obj):
-    negative_matrix = False
-    for val in obj.scale:
-        if val < 0:
-            negative_matrix = True
-
+    negative_matrix = any(val < 0 for val in obj.scale)
     m = obj.matrix_world
     obj.data.transform(m)
     if negative_matrix and obj.type == 'MESH':
@@ -380,8 +380,7 @@ def kdtree_from_mesh_vertices(mesh):
 def kdtree_from_obj_polygons(obj, indices_of_polygons_subset=None):
     polygons = []
     if indices_of_polygons_subset is not None:
-        for idx in indices_of_polygons_subset:
-            polygons.append(obj.data.polygons[idx])
+        polygons.extend(obj.data.polygons[idx] for idx in indices_of_polygons_subset)
     else:
         polygons = obj.data.polygons
     research_tree = mathutils.kdtree.KDTree(len(polygons))
@@ -393,8 +392,10 @@ def kdtree_from_obj_polygons(obj, indices_of_polygons_subset=None):
 def bvhtree_from_obj_polygons(obj, indices_of_polygons_subset=None):
     polygons = []
     if indices_of_polygons_subset is not None:
-        for idx in indices_of_polygons_subset:
-            polygons.append(obj.data.polygons[idx].vertices)
+        polygons.extend(
+            obj.data.polygons[idx].vertices
+            for idx in indices_of_polygons_subset
+        )
     else:
         polygons = [ poly.vertices for poly in obj.data.polygons ]
     vertices = [ vert.co for vert in obj.data.vertices ]

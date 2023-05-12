@@ -95,13 +95,12 @@ rotation_limits_dict = {
 
 #Dictionary for fingers
 def finger_dict(fingers):
-    fd = {}
-    for finger in fingers:
-        if "00_" in finger:
-            fd.update({finger: [0, 0, 0, 0, -5, 5]})
-        else:
-            fd.update({finger: [-90, 0, 0, 0, -5, 5]})
-    return fd
+    return {
+        finger: [0, 0, 0, 0, -5, 5]
+        if "00_" in finger
+        else [-90, 0, 0, 0, -5, 5]
+        for finger in fingers
+    }
 
 fd = finger_dict(fingers)
 

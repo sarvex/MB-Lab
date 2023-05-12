@@ -77,13 +77,11 @@ class RetargetEngine:
     @staticmethod
     def get_selected_posebone():
         if bpy.context.selected_pose_bones:
-            if bpy.context.selected_pose_bones:
-                return bpy.context.selected_pose_bones[0]
+            return bpy.context.selected_pose_bones[0]
         return None
 
     def is_editable_bone(self):
-        armat = get_active_armature()
-        if armat:
+        if armat := get_active_armature():
             if armat.animation_data:
                 if armat.animation_data.action:
                     if self.rot_type in ["EULER", "QUATERNION"]:
@@ -106,8 +104,7 @@ class RetargetEngine:
 
     def check_correction_sync(self):
         scn = bpy.context.scene
-        selected_bone = self.get_selected_posebone()
-        if selected_bone:
+        if selected_bone := self.get_selected_posebone():
             if self.last_selected_bone_name != selected_bone.name:
 
                 self.get_bone_rot_type()
@@ -125,24 +122,22 @@ class RetargetEngine:
         offsets = [0, 0, 0]
 
         for i in (0, 1, 2):
-            if self.rot_type == "QUATERNION":
-                channel = i+1
-            else:
-                channel = i
+            channel = i+1 if self.rot_type == "QUATERNION" else i
             armat_name, animation_curve, animation_data_id = self.get_curve_data(channel)
 
-            if armat_name in self.stored_animations.keys():
-                if animation_data_id in self.stored_animations[armat_name].keys():
-                    animation_data = self.stored_animations[armat_name][animation_data_id]
-                    if animation_curve:
-                        if animation_curve.keyframe_points:
-                            offsets[i] = animation_curve.keyframe_points[0].co[1] - animation_data[0]
+            if (
+                armat_name in self.stored_animations.keys()
+                and animation_data_id in self.stored_animations[armat_name].keys()
+                and animation_curve
+                and animation_curve.keyframe_points
+            ):
+                animation_data = self.stored_animations[armat_name][animation_data_id]
+                offsets[i] = animation_curve.keyframe_points[0].co[1] - animation_data[0]
         return offsets
 
     def identify_curve_rot(self, bone):
         r_type = "NO_CURVES"
-        armat = get_active_armature()
-        if armat:
+        if armat := get_active_armature():
             action = self.get_action(armat)
             if action and bone:
                 d_path1 = f'pose.bones["{bone.name}"].rotation_quaternion'
@@ -176,12 +171,9 @@ class RetargetEngine:
         armat = get_active_armature()
         d_path = None
         if armat:
-            action = self.get_action(armat)
-            if action:
-                selected_bone = self.get_selected_posebone()
-                if selected_bone:
-                    d_path = self.get_bone_curve_id(selected_bone)
-                    if d_path:
+            if action := self.get_action(armat):
+                if selected_bone := self.get_selected_posebone():
+                    if d_path := self.get_bone_curve_id(selected_bone):
                         animation_curve = action.fcurves.find(d_path, index=channel)
                         animation_data_id = f'{d_path}{str(channel)}'
                         if animation_curve:
@@ -201,9 +193,7 @@ class RetargetEngine:
             if armat_name not in self.stored_animations.keys():
                 self.stored_animations[armat_name] = {}
             if animation_data_id not in self.stored_animations[armat_name].keys():
-                animation_data = []
-                for kpoint in animation_curve.keyframe_points:
-                    animation_data.append(kpoint.co[1])
+                animation_data = [kpoint.co[1] for kpoint in animation_curve.keyframe_points]
                 self.stored_animations[armat_name][animation_data_id] = animation_data
             else:
                 animation_data = self.stored_animations[armat_name][animation_data_id]
@@ -214,28 +204,29 @@ class RetargetEngine:
         scn.frame_set(scn.frame_current)
 
     def align_bones_z_axis(self, target_armature, source_armature):
+        if not target_armature:
+            return
         armature_z_axis = {}
-        if target_armature:
-            if source_armature:
-                logger.info("Aligning Z axis of %s with Z axis of %s",
-                            target_armature.name, source_armature.name)
-                algorithms.select_and_change_mode(source_armature, 'EDIT')
+        if source_armature:
+            logger.info("Aligning Z axis of %s with Z axis of %s",
+                        target_armature.name, source_armature.name)
+            algorithms.select_and_change_mode(source_armature, 'EDIT')
 
-                for x_bone in target_armature.data.bones:
-                    b_name = x_bone.name
-                    source_bone_name = self.get_mapped_name(b_name)
-                    if source_bone_name is not None:
-                        armature_z_axis[b_name] = source_armature.data.edit_bones[source_bone_name].z_axis.copy()
-                    else:
-                        logger.debug("Bone %s non mapped", b_name)
-                algorithms.select_and_change_mode(source_armature, 'POSE')
+            for x_bone in target_armature.data.bones:
+                b_name = x_bone.name
+                source_bone_name = self.get_mapped_name(b_name)
+                if source_bone_name is not None:
+                    armature_z_axis[b_name] = source_armature.data.edit_bones[source_bone_name].z_axis.copy()
+                else:
+                    logger.debug("Bone %s non mapped", b_name)
+            algorithms.select_and_change_mode(source_armature, 'POSE')
 
-            algorithms.select_and_change_mode(target_armature, 'EDIT')
-            for armat_bone in target_armature.data.edit_bones:
-                if armat_bone.name in armature_z_axis:
-                    z_axis = armature_z_axis[armat_bone.name]
-                    armat_bone.align_roll(z_axis)
-            algorithms.select_and_change_mode(target_armature, 'POSE')
+        algorithms.select_and_change_mode(target_armature, 'EDIT')
+        for armat_bone in target_armature.data.edit_bones:
+            if armat_bone.name in armature_z_axis:
+                z_axis = armature_z_axis[armat_bone.name]
+                armat_bone.align_roll(z_axis)
+        algorithms.select_and_change_mode(target_armature, 'POSE')
 
     def reset_skeleton_mapped(self):
         self.skeleton_mapped = {}
@@ -278,11 +269,11 @@ class RetargetEngine:
     def name_combinations(bone_identifiers, side):
 
         combinations = []
-        if side == 'RIGHT':
-            side_id = ("r", "right")
-            junctions = (".", "_", "-", "")
-        elif side == 'LEFT':
+        if side == 'LEFT':
             side_id = ("l", "left")
+            junctions = (".", "_", "-", "")
+        elif side == 'RIGHT':
+            side_id = ("r", "right")
             junctions = (".", "_", "-", "")
         else:
             side_id = [""]
@@ -291,9 +282,7 @@ class RetargetEngine:
         for b_id in bone_identifiers:
             for s_id in side_id:
                 for junct in junctions:
-                    combinations.append(f'{b_id}{junct}{s_id}')
-                    combinations.append(f'{s_id}{junct}{b_id}')
-
+                    combinations.extend((f'{b_id}{junct}{s_id}', f'{s_id}{junct}{b_id}'))
         return combinations
 
     def get_bone_by_exact_id(self, bones_to_scan, bone_identifiers, side):
@@ -326,16 +315,9 @@ class RetargetEngine:
         index = None
         if bones_chain:
             if len(index_data) == 1:
-                if index_data[0] == "LAST":
-                    index = len(bones_chain)-1
-                else:
-                    index = index_data[0]
+                index = len(bones_chain)-1 if index_data[0] == "LAST" else index_data[0]
             if len(index_data) == 3:
-                if len(bones_chain) == index_data[0]:
-                    index = index_data[1]
-                else:
-                    index = index_data[2]
-
+                index = index_data[1] if len(bones_chain) == index_data[0] else index_data[2]
             if index == "None":
                 index = None
 
@@ -367,10 +349,7 @@ class RetargetEngine:
 
     @staticmethod
     def get_all_bone_names(armat):
-        bone_names = []
-        for bn in armat.data.bones:
-            bone_names.append(bn.name)
-        return bone_names
+        return [bn.name for bn in armat.data.bones]
 
     @staticmethod
     @lru_cache(maxsize=2)
@@ -395,15 +374,15 @@ class RetargetEngine:
 
         score_level = 0.0
 
-        if side == "RIGHT":
-            id_side2 = "right"
-            id_side3 = ("r.", "r_")
-            id_side4 = ("_r", ".r")
-
         if side == "LEFT":
             id_side2 = "left"
             id_side3 = ("l.", "l_")
             id_side4 = ("_l", ".l")
+
+        elif side == "RIGHT":
+            id_side2 = "right"
+            id_side3 = ("r.", "r_")
+            id_side4 = ("_r", ".r")
 
         combo_bones_start, combo_bones_end = self.generate_bones_ids(side)
 
@@ -419,28 +398,18 @@ class RetargetEngine:
                 if c1 or c2 or c3 or c4 or c5:
                     score_level += 1
 
-        if bone_names:
-            return score_level/len(bone_names)
-
-        return 0
+        return score_level/len(bone_names) if bone_names else 0
 
     @staticmethod
     def order_with_list(bones_set, bones_list):
-        ordered_bones = []
-        for bone in bones_list:
-            if bone in bones_set:
-                ordered_bones.append(bone)
-        return ordered_bones
+        return [bone for bone in bones_list if bone in bones_set]
 
     def chains_intersection(self, chains):
 
-        chain_sets = []
         chain_inters = None
         result_chain = []
 
-        for chain in chains:
-            chain_sets.append(set(chain))
-
+        chain_sets = [set(chain) for chain in chains]
         for i, chain in enumerate(chain_sets):
             chain_inters = chain if chain_inters is None else chain_inters.intersection(chain)
             result_chain = self.order_with_list(chain_inters, chains[i])
@@ -449,16 +418,12 @@ class RetargetEngine:
 
     @staticmethod
     def filter_chains_by_max_length(chains):
-        longer_chains = []
         max_length = 0
 
         for chain in chains:
             max_length = max(max_length, len(chain))
 
-        for chain in chains:
-            if len(chain) == max_length:
-                longer_chains.append(chain)
-        return longer_chains
+        return [chain for chain in chains if len(chain) == max_length]
 
     def chains_difference(self, chain_list, subchain_list):
         subchain_set = set(subchain_list)
@@ -529,10 +494,9 @@ class RetargetEngine:
             edit_bones = algorithms.get_edit_bones(armature)
             if bone_name in edit_bones:
                 e_bone = edit_bones[bone_name]
-                if e_bone.parent:
-                    if e_bone.length < e_bone.parent.length/8:
-                        logger.info("Retarget: Bone %s removed BY LENGTH", bone_name)
-                        chain.remove(bone_name)
+                if e_bone.parent and e_bone.length < e_bone.parent.length / 8:
+                    logger.info("Retarget: Bone %s removed BY LENGTH", bone_name)
+                    chain.remove(bone_name)
         algorithms.select_and_change_mode(armature, 'POSE')  # TODO: store the status and restore it
         return chain
 
@@ -582,21 +546,13 @@ class RetargetEngine:
 
     @staticmethod
     def filter_chains_by_id(chains, chain_ids):
-        target_chains_lists = []
-        for chain in chains:
-            if algorithms.is_in_list(chain_ids, chain):
-                target_chains_lists.append(chain)
-        return target_chains_lists
+        return [chain for chain in chains if algorithms.is_in_list(chain_ids, chain)]
 
     @staticmethod
     def filter_chains_by_order(chains, n_ord):
         named_fingers = ("thu", "ind", "mid", "ring", "pink")
-        identifiers = []
-        for chain in chains:
-            if chain:
-                identifiers.append(chain[0])
+        identifiers = [chain[0] for chain in chains if chain]
         identifiers.sort()
-        result_chain = []
         chain_order = None
         chain_id = None
 
@@ -606,7 +562,7 @@ class RetargetEngine:
             chain_order = "NUMBERED"
         if chain_order == "NAMED":
             chain_id = named_fingers[n_ord]
-        if chain_order == "NUMBERED":
+        elif chain_order == "NUMBERED":
             if len(identifiers) > n_ord:
                 chain_id = identifiers[n_ord]
         if chain_id:
@@ -615,9 +571,8 @@ class RetargetEngine:
                 chain_tail = chain[0]
                 chain_tail = chain_tail.lower()
                 if chain_id in chain_tail:
-                    result_chain = chain
-                    return result_chain
-        return result_chain
+                    return chain
+        return []
 
     def identify_bone_chains(self, chains):
 
@@ -711,26 +666,18 @@ class RetargetEngine:
 
     @staticmethod
     def get_ending_bones(armat):
-        found_bones = set()
-        for bn in armat.data.bones:
-            if not bn.children:
-                found_bones.add(bn.name)
-        return found_bones
+        return {bn.name for bn in armat.data.bones if not bn.children}
 
     @staticmethod
     def string_similarity(main_string, identifiers, side):
         m_string = main_string.lower()
-        sub_string_found = False
         substrings = []
         if side == 'LEFT':
             substrings = ["l-", "-l", "_l", "l_", ".l", "l.", "left"]
-        if side == 'RIGHT':
+        elif side == 'RIGHT':
             substrings = ["r-", "-r", "_r", "r_", ".r", "r.", "right"]
 
-        for id_string in identifiers:
-            if id_string in m_string:
-                sub_string_found = True
-
+        sub_string_found = any(id_string in m_string for id_string in identifiers)
         if sub_string_found:
             strings_to_subtract = identifiers + substrings
             for s_string in strings_to_subtract:
@@ -817,9 +764,9 @@ class RetargetEngine:
 
             for s_method in search_sequence:
                 if s_method == "by_exact_name":
-                    result = self.get_bone_by_exact_id(bones_chain, main_ids, side)
-
-                    if result:
+                    if result := self.get_bone_by_exact_id(
+                        bones_chain, main_ids, side
+                    ):
                         logger.info("Retarget: Bone %s found BY EXACT NAME", bone_type)
                         if result not in self.already_mapped_bones:
                             self.already_mapped_bones.append(result)
@@ -827,9 +774,9 @@ class RetargetEngine:
                             return result
 
                 if s_method == "by_similar_name":
-                    result = self.get_bone_by_similar_id(bones_chain, main_ids, side)
-
-                    if result:
+                    if result := self.get_bone_by_similar_id(
+                        bones_chain, main_ids, side
+                    ):
                         logger.info("Retarget: Bone %s found BY SIMILAR NAME", bone_type)
                         if result not in self.already_mapped_bones:
                             self.already_mapped_bones.append(result)
@@ -837,9 +784,9 @@ class RetargetEngine:
                             return result
 
                 if s_method == "by_children":
-                    result = self.get_bone_by_childr(armat, bones_chain, children_ids)
-
-                    if result:
+                    if result := self.get_bone_by_childr(
+                        armat, bones_chain, children_ids
+                    ):
                         logger.info("Retarget: Bone %s found BY CHILDREN", bone_type)
                         if result not in self.already_mapped_bones:
                             self.already_mapped_bones.append(result)
@@ -847,9 +794,9 @@ class RetargetEngine:
                             return result
 
                 if s_method == "by_chain_index":
-                    result = self.get_bones_by_index(bones_chain, position_in_chain)
-
-                    if result:
+                    if result := self.get_bones_by_index(
+                        bones_chain, position_in_chain
+                    ):
                         logger.info("Retarget: Bone %s found BY CHAIN INDEX", bone_type)
                         if result not in self.already_mapped_bones:
                             self.already_mapped_bones.append(result)
@@ -857,25 +804,21 @@ class RetargetEngine:
                             return result
 
             logger.warning("All retarget methods failed for %s.", bone_type)
-            #logger.warning(No candidates found in: {0}, or the candidate found is already mapped to another bone".format(bones_chain))
+                #logger.warning(No candidates found in: {0}, or the candidate found is already mapped to another bone".format(bones_chain))
         return None
 
     def bone_parent_name(self, armat, b_name):
-        x_bone = self.get_bone(armat, b_name)
-        if x_bone:
+        if x_bone := self.get_bone(armat, b_name):
             if x_bone.parent:
                 return x_bone.parent.name
         return None
 
     def get_bone(self, armat, b_name, b_type="TARGET"):
         if armat:
-            if b_type == "TARGET":
-                if b_name:
-                    if b_name in armat.pose.bones:
-                        return armat.pose.bones[b_name]
+            if b_type == "TARGET" and b_name and b_name in armat.pose.bones:
+                return armat.pose.bones[b_name]
             if b_type == "SOURCE":
-                b_name = self.get_mapped_name(b_name)
-                if b_name:
+                if b_name := self.get_mapped_name(b_name):
                     if b_name in armat.pose.bones:
                         return armat.pose.bones[b_name]
         return None
@@ -884,8 +827,7 @@ class RetargetEngine:
     def get_target_editbone(armat, b_name,):
         if bpy.context.object.mode == "EDIT":
             if b_name:
-                ebone = algorithms.get_edit_bone(armat, b_name)
-                if ebone:
+                if ebone := algorithms.get_edit_bone(armat, b_name):
                     return ebone
                 logger.warning("%s not found in edit mode of target armature %s", b_name, armat)
                 return None
@@ -896,10 +838,8 @@ class RetargetEngine:
 
     def get_source_editbone(self, armat, b_name):
         if bpy.context.object.mode == "EDIT":
-            b_name = self.get_mapped_name(b_name)
-            if b_name:
-                ebone = algorithms.get_edit_bone(armat, b_name)
-                if ebone:
+            if b_name := self.get_mapped_name(b_name):
+                if ebone := algorithms.get_edit_bone(armat, b_name):
                     return ebone
                 logger.warning("%s not found in edit mode of source armature %s", b_name, armat)
                 return None
@@ -917,11 +857,8 @@ class RetargetEngine:
             self.skeleton_mapped[b_name] = mapped_name
 
     def map_by_direct_parent(self, armat, childr_name, map_name):
-        childr_bone_name = self.get_mapped_name(childr_name)
-
-        if childr_bone_name:
-            parent_bone_name = self.bone_parent_name(armat, childr_bone_name)
-            if parent_bone_name:
+        if childr_bone_name := self.get_mapped_name(childr_name):
+            if parent_bone_name := self.bone_parent_name(armat, childr_bone_name):
                 if parent_bone_name not in self.already_mapped_bones:
                     self.skeleton_mapped[map_name] = parent_bone_name
                     self.already_mapped_bones.append(parent_bone_name)
@@ -1119,8 +1056,9 @@ class RetargetEngine:
     def calculate_skeleton_rotations(self, target_armat, source_armat, rot_type):
 
         algorithms.apply_object_transformation(source_armat)
-        source_vectors = self.calculate_skeleton_vectors(source_armat, 'SOURCE', rot_type)
-        if source_vectors:
+        if source_vectors := self.calculate_skeleton_vectors(
+            source_armat, 'SOURCE', rot_type
+        ):
             target_vectors = self.calculate_skeleton_vectors(target_armat, 'TARGET', rot_type)
             if rot_type == "ALIGN_SHOULDERS":
                 source_vectors.z = 0.0
@@ -1143,37 +1081,38 @@ class RetargetEngine:
 
     def use_animation_pelvis(self, target_armat, source_armat):
 
-        if target_armat and source_armat:
-            v1 = None
-            v2 = None
+        if not target_armat or not source_armat:
+            return
+        v1 = None
+        v2 = None
 
-            armat_prop = self.get_armature_proportion(target_armat, source_armat)
-            algorithms.select_and_change_mode(source_armat, 'EDIT')
-            source_pelvis = self.get_source_editbone(source_armat, "pelvis")
-            r_thigh_bone = self.get_source_editbone(source_armat, "thigh_R")
-            l_thigh_bone = self.get_source_editbone(source_armat, "thigh_L")
+        armat_prop = self.get_armature_proportion(target_armat, source_armat)
+        algorithms.select_and_change_mode(source_armat, 'EDIT')
+        source_pelvis = self.get_source_editbone(source_armat, "pelvis")
+        r_thigh_bone = self.get_source_editbone(source_armat, "thigh_R")
+        l_thigh_bone = self.get_source_editbone(source_armat, "thigh_L")
 
-            if source_pelvis and r_thigh_bone and l_thigh_bone:
-                p1 = (r_thigh_bone.head + l_thigh_bone.head) * 0.5
-                p2 = source_pelvis.head
-                p3 = source_pelvis.tail
-                v1 = armat_prop * (p2 - p1)
-                v2 = armat_prop * (p3 - p2)
+        if source_pelvis and r_thigh_bone and l_thigh_bone:
+            p1 = (r_thigh_bone.head + l_thigh_bone.head) * 0.5
+            p2 = source_pelvis.head
+            p3 = source_pelvis.tail
+            v1 = armat_prop * (p2 - p1)
+            v2 = armat_prop * (p3 - p2)
 
-            algorithms.select_and_change_mode(source_armat, 'POSE')
+        algorithms.select_and_change_mode(source_armat, 'POSE')
 
-            if v1 and v2:
-                algorithms.select_and_change_mode(target_armat, 'EDIT')
-                target_pelvis = self.get_target_editbone(target_armat, "pelvis")
-                r_thigh_bone = self.get_target_editbone(target_armat, "thigh_R")
-                l_thigh_bone = self.get_target_editbone(target_armat, "thigh_L")
+        if v1 and v2:
+            algorithms.select_and_change_mode(target_armat, 'EDIT')
+            target_pelvis = self.get_target_editbone(target_armat, "pelvis")
+            r_thigh_bone = self.get_target_editbone(target_armat, "thigh_R")
+            l_thigh_bone = self.get_target_editbone(target_armat, "thigh_L")
 
-                if target_pelvis and r_thigh_bone and l_thigh_bone:
-                    p1a = (r_thigh_bone.head + l_thigh_bone.head) * 0.5
-                    target_pelvis.head = p1a + v1
-                    target_pelvis.tail = target_pelvis.head + v2
+            if target_pelvis and r_thigh_bone and l_thigh_bone:
+                p1a = (r_thigh_bone.head + l_thigh_bone.head) * 0.5
+                target_pelvis.head = p1a + v1
+                target_pelvis.tail = target_pelvis.head + v2
 
-                algorithms.select_and_change_mode(target_armat, 'POSE')
+            algorithms.select_and_change_mode(target_armat, 'POSE')
 
     def armature_height(self, armat, armat_type):
         if not armat:
@@ -1235,32 +1174,39 @@ class RetargetEngine:
 
     def add_copy_rotations(self, target_armat, source_armat, bones_to_rotate, space='WORLD'):
         for b in target_armat.pose.bones:
-            if b.name in self.skeleton_mapped and b.name in bones_to_rotate:
-                if self.skeleton_mapped[b.name] and "mbastlab_rot" not in b.constraints:
-                    cstr = b.constraints.new('COPY_ROTATION')
-                    cstr.target = source_armat
-                    cstr.subtarget = self.skeleton_mapped[b.name]
-                    cstr.target_space = space
-                    cstr.owner_space = space
-                    cstr.name = "mbastlab_rot"
+            if (
+                b.name in self.skeleton_mapped
+                and b.name in bones_to_rotate
+                and self.skeleton_mapped[b.name]
+                and "mbastlab_rot" not in b.constraints
+            ):
+                cstr = b.constraints.new('COPY_ROTATION')
+                cstr.target = source_armat
+                cstr.subtarget = self.skeleton_mapped[b.name]
+                cstr.target_space = space
+                cstr.owner_space = space
+                cstr.name = "mbastlab_rot"
 
     def add_copy_location(self, target_armat, source_armat, bones_to_move):
         for b in target_armat.pose.bones:
-            if b.name in self.skeleton_mapped and b.name in bones_to_move:
-                if "mbastlab_loc" not in b.constraints:
-                    cstr = b.constraints.new('COPY_LOCATION')
-                    cstr.target = source_armat
-                    cstr.subtarget = self.skeleton_mapped[b.name]
-                    cstr.target_space = "WORLD"
-                    cstr.owner_space = "WORLD"
-                    cstr.name = "mbastlab_loc"
+            if (
+                b.name in self.skeleton_mapped
+                and b.name in bones_to_move
+                and "mbastlab_loc" not in b.constraints
+            ):
+                cstr = b.constraints.new('COPY_LOCATION')
+                cstr.target = source_armat
+                cstr.subtarget = self.skeleton_mapped[b.name]
+                cstr.target_space = "WORLD"
+                cstr.owner_space = "WORLD"
+                cstr.name = "mbastlab_loc"
 
     def add_armature_constraints(self, target_armat, source_armat):
-        bones_to_rotate = []
-        for b in target_armat.pose.bones:
-            if b.name not in self.local_rotation_bones:
-                bones_to_rotate.append(b.name)
-
+        bones_to_rotate = [
+            b.name
+            for b in target_armat.pose.bones
+            if b.name not in self.local_rotation_bones
+        ]
         self.add_copy_rotations(target_armat, source_armat, bones_to_rotate)
         self.add_copy_rotations(target_armat, source_armat, self.local_rotation_bones, 'LOCAL')
         self.add_copy_location(target_armat, source_armat, ["pelvis"])
@@ -1277,11 +1223,7 @@ class RetargetEngine:
     def get_armature_proportion(self, target_armat, source_armat):
         t_height = self.armature_height(target_armat, 'TARGET')
         s_height = self.armature_height(source_armat, 'SOURCE')
-        if s_height != 0:
-            armat_prop = t_height/s_height
-        else:
-            armat_prop = 1
-        return armat_prop
+        return t_height/s_height if s_height != 0 else 1
 
     def reset_pose(self, armat=None, reset_location=True):
         if not armat:
@@ -1291,9 +1233,8 @@ class RetargetEngine:
             algorithms.stop_animation()
             for p_bone in armat.pose.bones:
                 algorithms.reset_bone_rot(p_bone)
-                if reset_location:
-                    if p_bone.name == "pelvis":
-                        p_bone.location = [0, 0, 0]
+                if reset_location and p_bone.name == "pelvis":
+                    p_bone.location = [0, 0, 0]
 
     def load_bones_quaternions(self, armat, data_path):
         self.reset_pose(armat)
@@ -1317,13 +1258,13 @@ class RetargetEngine:
             return
 
         algorithms.select_and_change_mode(armat, "POSE")
-        matrix_data = {}
         algorithms.set_object_visible(armat)
         pose_bones = algorithms.get_pose_bones(armat)
-        for p_bone in pose_bones:
-            if "muscle" not in p_bone.name and "IK_" not in p_bone.name:
-                matrix_data[p_bone.name] = [value for value in algorithms.get_bone_rotation(p_bone)]
-
+        matrix_data = {
+            p_bone.name: list(algorithms.get_bone_rotation(p_bone))
+            for p_bone in pose_bones
+            if "muscle" not in p_bone.name and "IK_" not in p_bone.name
+        }
         with open(filepath, 'w') as fp:
             json.dump(matrix_data, fp)
 
@@ -1338,9 +1279,9 @@ class RetargetEngine:
         self.reset_pose(target_armature)
 
         if use_retarget:
-            source_armature = file_ops.import_object_from_lib(
-                self.lib_filepath, "MBLab_skeleton_base_fk", "temporary_armature")
-            if source_armature:
+            if source_armature := file_ops.import_object_from_lib(
+                self.lib_filepath, "MBLab_skeleton_base_fk", "temporary_armature"
+            ):
                 self.load_bones_quaternions(source_armature, filepath)
                 self.retarget(target_armature, source_armature, bake_animation=True)
                 object_ops.remove_object(source_armature)
@@ -1359,8 +1300,7 @@ class RetargetEngine:
         if target_armature:
             existing_obj_names = algorithms.collect_existing_objects()
             self.load_bvh(bvh_path)
-            source_armature = algorithms.get_newest_object(existing_obj_names)
-            if source_armature:
+            if source_armature := algorithms.get_newest_object(existing_obj_names):
                 if not debug_mode:
                     self.retarget(target_armature, source_armature, True)
                     object_ops.remove_object(source_armature)

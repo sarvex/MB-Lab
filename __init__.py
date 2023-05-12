@@ -122,8 +122,8 @@ def start_lab_session():
         rigging_type = "ik"
     if scn.mblab_use_muscle:
         rigging_type = "muscle"
-    if scn.mblab_use_muscle and scn.mblab_use_ik:
-        rigging_type = "muscle_ik"
+        if scn.mblab_use_ik:
+            rigging_type = "muscle_ik"
 
     lib_filepath = file_ops.get_blendlibrary_path()
 
@@ -160,11 +160,14 @@ def start_lab_session():
         if mblab_humanoid.has_data:
             gui_status = "ACTIVE_SESSION"
 
-            if scn.mblab_use_cycles or scn.mblab_use_eevee:
-                if scn.mblab_use_cycles:
-                    scn.render.engine = 'CYCLES'
-                else:
-                    scn.render.engine = 'BLENDER_EEVEE'
+            if scn.mblab_use_cycles:
+                scn.render.engine = 'CYCLES'
+                if scn.mblab_use_lamps:
+
+                    object_ops.add_lighting()
+
+            elif scn.mblab_use_eevee:
+                scn.render.engine = 'BLENDER_EEVEE'
                 if scn.mblab_use_lamps:
 
                     object_ops.add_lighting()
@@ -192,7 +195,7 @@ def start_lab_session():
             else:
                 mblab_humanoid.reset_mesh()
                 mblab_humanoid.update_character(mode="update_all")
-            
+
             # All inits for creation tools.
             morphcreator.init_morph_names_database()
             mbcrea_expressionscreator.reset_expressions_items()
@@ -396,12 +399,10 @@ def init_measures_props(humanoid_instance):
 
 #Teto
 def get_categories_enum(exclude=[]):
-    categories_enum = []
-    # All categories for "Body Measures"
-    for category in mblab_humanoid.get_categories(exclude):
-        categories_enum.append(
-            (category.name, category.name, category.name))
-    return categories_enum
+    return [
+        (category.name, category.name, category.name)
+        for category in mblab_humanoid.get_categories(exclude)
+    ]
 
 def init_categories_props(humanoid_instance):
     global mbcrea_expressionscreator
@@ -439,26 +440,28 @@ def init_restposes_props(humanoid_instance):
 
 def init_maleposes_props():
     global mblab_retarget
-    if mblab_retarget.maleposes_exist:
-        if not hasattr(bpy.types.Object, 'male_pose'):
-            malepose_items = file_ops.generate_items_list(mblab_retarget.maleposes_path)
-            bpy.types.Object.male_pose = bpy.props.EnumProperty(
-                items=malepose_items,
-                name="Male pose",
-                default=malepose_items[0][0],
-                update=malepose_update)
+    if mblab_retarget.maleposes_exist and not hasattr(
+        bpy.types.Object, 'male_pose'
+    ):
+        malepose_items = file_ops.generate_items_list(mblab_retarget.maleposes_path)
+        bpy.types.Object.male_pose = bpy.props.EnumProperty(
+            items=malepose_items,
+            name="Male pose",
+            default=malepose_items[0][0],
+            update=malepose_update)
 
 
 def init_femaleposes_props():
     global mblab_retarget
-    if mblab_retarget.femaleposes_exist:
-        if not hasattr(bpy.types.Object, 'female_pose'):
-            femalepose_items = file_ops.generate_items_list(mblab_retarget.femaleposes_path)
-            bpy.types.Object.female_pose = bpy.props.EnumProperty(
-                items=femalepose_items,
-                name="Female pose",
-                default=femalepose_items[0][0],
-                update=femalepose_update)
+    if mblab_retarget.femaleposes_exist and not hasattr(
+        bpy.types.Object, 'female_pose'
+    ):
+        femalepose_items = file_ops.generate_items_list(mblab_retarget.femaleposes_path)
+        bpy.types.Object.female_pose = bpy.props.EnumProperty(
+            items=femalepose_items,
+            name="Female pose",
+            default=femalepose_items[0][0],
+            update=femalepose_update)
 
 
 def init_expression_props():
@@ -556,28 +559,27 @@ def angle_update_2(self, context):
 
 
 def get_character_items(self, context):
-    items = []
-    for obj in bpy.data.objects:
-        if obj.type == 'MESH':
-            if algorithms.get_template_model(obj) is not None:
-                items.append((obj.name, obj.name, obj.name))
-    return items
+    return [
+        (obj.name, obj.name, obj.name)
+        for obj in bpy.data.objects
+        if obj.type == 'MESH'
+        and algorithms.get_template_model(obj) is not None
+    ]
 
 
 def get_proxy_items(self, context):
-    items = []
-    for obj in bpy.data.objects:
-        if obj.type == 'MESH':
-            if algorithms.get_template_model(obj) is None:
-                items.append((obj.name, obj.name, obj.name))
-    if len(items) == 0:
+    items = [
+        (obj.name, obj.name, obj.name)
+        for obj in bpy.data.objects
+        if obj.type == 'MESH' and algorithms.get_template_model(obj) is None
+    ]
+    if not items:
         items = [("NO_PROXY_FOUND", "No proxy found", "No proxy found")]
     return items
 
 
 def get_proxy_items_from_library(self, context):
-    items = mblab_proxy.assets_models
-    return items
+    return mblab_proxy.assets_models
 
 
 def update_proxy_library(self, context):
@@ -1166,19 +1168,21 @@ class FinalizeMorph(bpy.types.Operator):
         else:
             splitted = algorithms.split_name(scn.mblab_morphing_body_type)
             if len(splitted) < 1:
-                file_name = morphcreator.get_body_type() + "_morphs"
+                file_name = f"{morphcreator.get_body_type()}_morphs"
             else:
-                file_name = morphcreator.get_body_type()[0:2] + splitted + "_morphs"
+                file_name = morphcreator.get_body_type()[:2] + splitted + "_morphs"
             if len(scn.mblab_morphing_file_extra_name) > 0:
-                file_name = file_name + "_" + scn.mblab_morphing_file_extra_name
+                file_name = f"{file_name}_{scn.mblab_morphing_file_extra_name}"
         if scn.mblab_incremental_saves:
-            file_name = file_name + "_" + morphcreator.get_next_number()
+            file_name = f"{file_name}_{morphcreator.get_next_number()}"
         #-------Morph name----------
-        morph_name = morphcreator.get_body_parts(scn.mblab_body_part_name) + "_" + scn.mblab_morph_name + "_" + morphcreator.get_min_max(scn.mblab_morph_min_max)
+        morph_name = f"{morphcreator.get_body_parts(scn.mblab_body_part_name)}_{scn.mblab_morph_name}_{morphcreator.get_min_max(scn.mblab_morph_min_max)}"
         #-------Morphs path----------
-        file_path_name = os.path.join(file_ops.get_data_path(), "morphs", file_name + ".json")
+        file_path_name = os.path.join(
+            file_ops.get_data_path(), "morphs", f"{file_name}.json"
+        )
         file = file_ops.load_json_data(file_path_name, "Try to load a morph file")
-        if file == None:
+        if file is None:
             file = {}
         #---Creating new morph-------
         file[morph_name] = indexed_vertices
@@ -2181,10 +2185,7 @@ class ButtonSaveBvhAdjustments(bpy.types.Operator, ExportHelper):
 
         if mblab_retarget.rot_type in ["EULER", "QUATERNION"]:
             offsets = mblab_retarget.get_offset_values()
-            saveBone = []
-            saveBone.append(offsets[0])
-            saveBone.append(offsets[1])
-            saveBone.append(offsets[2])
+            saveBone = [offsets[0], offsets[1], offsets[2]]
             dict = {selected_bone: saveBone}
 
             if os.path.exists(self.filepath):
@@ -2505,8 +2506,9 @@ class LoadTemplate(bpy.types.Operator):
         scn = bpy.context.scene
         lib_filepath = file_ops.get_blendlibrary_path()
         base_model_name = mblab_humanoid.characters_config[scn.mblab_template_name]["template_model"]
-        obj = file_ops.import_object_from_lib(lib_filepath, base_model_name, scn.mblab_template_name)
-        if obj:
+        if obj := file_ops.import_object_from_lib(
+            lib_filepath, base_model_name, scn.mblab_template_name
+        ):
             obj["manuellab_proxy_reference"] = mblab_humanoid.characters_config[scn.mblab_template_name][
                 "template_model"]
         return {'FINISHED'}

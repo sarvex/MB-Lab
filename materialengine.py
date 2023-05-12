@@ -72,14 +72,10 @@ class MaterialEngine:
 
         }
 
-        image_file_paths = {}
-
-        for img_id, value in image_file_names.items():
-            image_file_paths[img_id] = os.path.join(
-                os.path.join(data_path, "textures"),
-                value
-            )
-
+        image_file_paths = {
+            img_id: os.path.join(os.path.join(data_path, "textures"), value)
+            for img_id, value in image_file_names.items()
+        }
         self.image_file_paths = image_file_paths
         self.image_file_names = image_file_names
         self.load_data_images()
@@ -153,7 +149,7 @@ class MaterialEngine:
     @staticmethod
     def calculate_disp_pixels(blender_image, age_factor, tone_factor, mass_factor):
         logger.info('start: calculate_disp_pixels %s', blender_image.name)
-        tone_f = tone_factor if tone_factor > 0.0 else 0.0
+        tone_f = max(tone_factor, 0.0)
 
         ajustments = np.array([0.0, 0.5, 0.5, 0.5], dtype='float32')
         factors = np.fmax(np.array([1, age_factor, tone_f, (1.0 - tone_f) * mass_factor], dtype='float32'), 0.0)
@@ -180,8 +176,7 @@ class MaterialEngine:
     def assign_image_to_node(material_name, node_name, image_name):
         logger.info("Assigning the image %s to node %s", image_name, node_name)
         mat_node = material_ops.get_material_node(material_name, node_name)
-        mat_image = file_ops.get_image(image_name)
-        if mat_image:
+        if mat_image := file_ops.get_image(image_name):
             material_ops.set_node_image(mat_node, mat_image)
         else:
             logger.warning("Node assignment failed. Image not found: %s", image_name)
@@ -194,11 +189,10 @@ class MaterialEngine:
         for material in material_ops.get_object_materials(obj):
             if material.node_tree:
                 for node in material_ops.get_material_nodes(material):
-                    is_parameter = False
-                    for param_identifier in self.parameter_identifiers:
-                        if param_identifier in node.name:
-                            is_parameter = True
-                            break
+                    is_parameter = any(
+                        param_identifier in node.name
+                        for param_identifier in self.parameter_identifiers
+                    )
                     if is_parameter:
                         node_output_val = material_ops.get_node_output_value(node, 0)
                         material_parameters[node.name] = node_output_val
@@ -261,7 +255,7 @@ class MaterialEngine:
         obj = self.get_object()
         for material in material_ops.get_object_materials(obj):
             if prefix != "":
-                material.name = prefix + "_" + material.name
+                material.name = f"{prefix}_{material.name}"
             else:
                 material.name = material.name+str(time.time())
 
@@ -273,8 +267,7 @@ class MaterialEngine:
     def generate_displacement_image(self):
         disp_data_image_name = self.image_file_names["displ_data"]
         if disp_data_image_name != "":
-            disp_data_image = file_ops.get_image(disp_data_image_name)
-            if disp_data_image:
+            if disp_data_image := file_ops.get_image(disp_data_image_name):
                 disp_size = disp_data_image.size
                 logger.info(
                     "Creating the displacement image from data image %s with size %sx%s",
@@ -292,10 +285,7 @@ class MaterialEngine:
         disp_data_image_name = self.image_file_names["displ_data"]
 
         if disp_data_image_name != "":
-            disp_data_image = file_ops.get_image(disp_data_image_name)
-
-            if disp_data_image:
-
+            if disp_data_image := file_ops.get_image(disp_data_image_name):
                 if self.image_file_names["body_displ"] in bpy.data.images:
                     disp_img = bpy.data.images[self.image_file_names["body_displ"]]
                 else:

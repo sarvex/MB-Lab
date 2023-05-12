@@ -96,7 +96,7 @@ def get_static_genders():
 #--------------------------------------
 
 def create_needed_directories(name=""):
-    if name == None or name == "":
+    if name is None or name == "":
         logger.critical("!WARNING! Name doesn't exist.")
         return
     elif is_forbidden_name(name):
@@ -109,7 +109,7 @@ def create_needed_directories(name=""):
         try:
             os.makedirs(os.path.join(path, sub_dir), mode=0o777)
         except FileExistsError:
-            logger.warning("Directory " + sub_dir + " already exists. Skipped.")
+            logger.warning(f"Directory {sub_dir} already exists. Skipped.")
 
 def set_data_directory(dir):
     global config_content
@@ -126,7 +126,7 @@ def get_project_directory():
     
 def save_config():
     global config_content
-    if config_content["data_directory"] == "" or config_content["data_directory"] == "data":
+    if config_content["data_directory"] in ["", "data"]:
         return
     addon_directory = os.path.dirname(os.path.realpath(__file__))
     file_name = os.path.join(addon_directory, config_content["data_directory"], config_content["data_directory"] + "_config.json")
@@ -141,7 +141,7 @@ def load_config(config_name):
     global config_content
     path = os.path.join(os.path.dirname(os.path.realpath(__file__)), config_name)
     if os.path.exists(path):
-        file_name = os.path.join(path, config_name + "_config.json")
+        file_name = os.path.join(path, f"{config_name}_config.json")
         config_content = file_ops.load_json_data(file_name, "Load config file")
         config_content["data_directory"] = config_name
         loaded_project = True
@@ -158,11 +158,11 @@ def add_content(key, key_in, content):
     # Now we figure out what we're talking about.
     if key == "data_directory":
         pass
-    elif key == "templates_list" or key == "character_list":
-        if not content in config_content[key]:
+    elif key in ["templates_list", "character_list"]:
+        if content not in config_content[key]:
             config_content[key].append(content)
     elif key in config_content["templates_list"]:
-        if not key in config_content:
+        if key not in config_content:
             config_content[key] = {
                 "description": "", "template_model": "",
                 "template_polygons": "", "name": key,
@@ -170,7 +170,7 @@ def add_content(key, key_in, content):
         if key_in != None:
             config_content[key][key_in] = content
     elif key in config_content["character_list"]:
-        if not key in config_content:
+        if key not in config_content:
             config_content[key] = {
                 "description": "", "template_model": "", "name": key,
                 "label": "", "texture_albedo": "", "texture_bump": "",
@@ -188,36 +188,33 @@ def add_content(key, key_in, content):
                 "joints_offset_file": "", "measures_file": "",
                 "presets_folder": "", "transformations_file": "",
                 "vertexgroup_base_file": "", "vertexgroup_muscle_file": ""}
-        if not key_in in config_content[key]:
-            config_content[key][key_in] = content
-        elif key_in != None:
+        if key_in not in config_content[key] or key_in != None:
             config_content[key][key_in] = content
 
 def set_content(key, content):
     global config_content
-    if key == None or key == "":
+    if key is None or key == "":
         return
     config_content[key] = content
 
 def delete_content(key):
     global config_content
-    if key == None or key == "":
+    if key is None or key == "":
         return
     del config_content[key]
 
 def get_content(key, key_in):
     global config_content
-    if key == None:
+    if key is None:
         return ""
-    if key in config_content["templates_list"] or key in config_content["character_list"]:
-        if not key in config_content:
-            add_content(key, None, "")
+    if (
+        key in config_content["templates_list"]
+        or key in config_content["character_list"]
+    ) and key not in config_content:
+        add_content(key, None, "")
     if key in config_content:
         content = config_content[key]
-        if type(content) is dict and key_in != None:
-            return content[key_in]
-        else:
-            return content
+        return content[key_in] if type(content) is dict and key_in != None else content
     return ""
     
 def init_config():
@@ -244,16 +241,12 @@ def is_directories_created():
     global config_content
     addon_directory = os.path.dirname(os.path.realpath(__file__))
     dirpath = os.path.join(addon_directory, config_content["data_directory"])
-    if os.path.isdir(dirpath):
-        return True
-    return False
+    return bool(os.path.isdir(dirpath))
 
 def is_config_created():
     global config_content
     dirpath = os.path.join(get_project_directory(), config_content["data_directory"] + "_config.json")
-    if os.path.isfile(dirpath):
-        return True
-    return False
+    return bool(os.path.isfile(dirpath))
 
 def delete_template(name):
     global config_content
@@ -290,9 +283,7 @@ def is_blend_file_exist():
     if len(config_content["data_directory"]) < 1:
         return False
     dirpath = os.path.join(get_project_directory(), "humanoid_library.blend")
-    if os.path.isfile(dirpath):
-        return True
-    return False
+    return bool(os.path.isfile(dirpath))
 
 def get_blend_file_pathname():
     return os.path.join(get_project_directory(), "humanoid_library.blend")
@@ -303,14 +294,16 @@ def get_blend_file_name():
 def load_blend_file():
     global blend_file_content
     global blend_file_content_loaded
-    
+
     if blend_file_content_loaded:
         return blend_file_content
-    
+
     if is_blend_file_exist():
         lib_filepath = get_blend_file_pathname()
     else:
-        logger.critical("Blend file does not exist or is not under /" + get_project_directory() + "/")
+        logger.critical(
+            f"Blend file does not exist or is not under /{get_project_directory()}/"
+        )
         return []
     # Import objects name from library
     with bpy.data.libraries.load(lib_filepath) as (data_from, data_to):
@@ -327,16 +320,12 @@ def blend_is_loaded():
 def get_meshes_names():
     global blend_file_content
     global blend_file_content_loaded
-    if blend_file_content_loaded:
-        return blend_file_content[2]
-    return []
+    return blend_file_content[2] if blend_file_content_loaded else []
 
 def get_objects_names():
     global blend_file_content
     global blend_file_content_loaded
-    if blend_file_content_loaded:
-        return blend_file_content[1]
-    return []
+    return blend_file_content[1] if blend_file_content_loaded else []
 
 def get_vertices_faces_count(model_name):
     global blend_file_content
@@ -354,8 +343,7 @@ def get_templates_list():
     return_list = [("NEW", "New template...", "Create a new template")]
     if len(config_content["templates_list"]) < 1:
         return return_list
-    for tl in config_content["templates_list"]:
-        return_list.append((tl, tl, tl))
+    return_list.extend((tl, tl, tl) for tl in config_content["templates_list"])
     return return_list
 
 def get_character_list(with_new=True):
@@ -365,8 +353,7 @@ def get_character_list(with_new=True):
         return_list = [("NEW", "New character...", "Create a new character")]
     elif len(config_content["character_list"]) < 1:
         return [('NONE', "No character", "No character created")]
-    for cl in config_content["character_list"]:
-        return_list.append((cl, cl, cl))
+    return_list.extend((cl, cl, cl) for cl in config_content["character_list"])
     return return_list
 
 def get_meshes_list():
@@ -374,13 +361,10 @@ def get_meshes_list():
     global blend_file_content_loaded
     if not blend_file_content_loaded:
         return [("NONE", "No blend file", "Must load a blend file to work")]
-    return_list = []
-    for mesh in blend_file_content[2]:
-        return_list.append((mesh, mesh, "mesh : " + mesh))
-    return return_list
+    return [(mesh, mesh, f"mesh : {mesh}") for mesh in blend_file_content[2]]
 
 def is_mesh_compatible(mesh, chara_name="", model_name=""):
-    if mesh == None:
+    if mesh is None:
         return False
     length = len(mesh.data.vertices)
     final_name = model_name
@@ -393,7 +377,5 @@ def is_mesh_compatible(mesh, chara_name="", model_name=""):
                 break
     if len(final_name) > 0:
         content = get_content(final_name, "vertices")
-        if content == length:
-            return True
-        return False
+        return content == length
     return False
